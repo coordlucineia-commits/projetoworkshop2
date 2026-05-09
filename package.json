@@ -8,7 +8,14 @@
     "preview": "vite preview",
     "dev": "vite",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:professor-ramon": "node scripts/provision-professor-ramon.mjs",
+    "seed:professor-auth": "node scripts/provision-professor-auth.mjs",
+    "seed:aluno-lu": "node scripts/provision-aluno-lu.mjs",
+    "seed:lute-demo": "node scripts/seed-lute-demo.mjs",
+    "seed:alunos-aleatorios": "node scripts/seed-alunos-aleatorios.mjs",
+    "seed:lucineia-avaliacao": "node scripts/seed-lucineia-avaliacao.mjs",
+    "reset:senha-auth": "node scripts/reset-auth-email-password.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

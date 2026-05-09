@@ -23,8 +23,10 @@ as $$
   select exists (
     select 1
     from public.admins a
+    inner join auth.users u on u.id = uid
     where a.ativo = true
-      and a.auth_user_id = uid::text
+      and a.auth_user_id = uid
+      and lower(trim(u.email)) = 'admin@luteacademy.com.br'
   );
 $$;
 

@@ -3,12 +3,13 @@ import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { MobileBottomNav } from "../components/MobileBottomNav";
+import { useRequireAdmin } from "../hooks/useRequireAdmin";
+import { useStaffPermissionGuard } from "../hooks/useStaffPermissionGuard";
 import { AlunoAvatar } from "../components/AlunoAvatar";
 import {
   Search,
   Sun,
   UserPlus,
-  QrCode,
   Calendar,
   Clock,
   UserCheck,
@@ -101,6 +102,8 @@ function getStatusColor(status: string) {
 
 export function CheckInsPage() {
   const navigate = useNavigate();
+  const { ready, checking } = useRequireAdmin();
+  const permGuard = useStaffPermissionGuard("checkins");
   const [filtro, setFiltro] = useState<"hoje" | "semana" | "mes">("hoje");
   const [busca, setBusca] = useState("");
   const [todos, setTodos] = useState<CheckIn[]>([]);
@@ -169,15 +172,23 @@ export function CheckInsPage() {
       if (!inRangeFiltro(checkIn.dataHora, filtro)) return false;
       const termo = busca.toLowerCase();
       if (!termo) return true;
-      return checkIn.alunoNome.toLowerCase().includes(termo);
+      return (checkIn.alunoNome ?? "").toLowerCase().includes(termo);
     });
   }, [todos, filtro, busca]);
 
+  if (checking || permGuard.checking || !ready) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#0A0A0A]" style={{ fontFamily: "monospace", fontSize: 12 }}>
+        <span style={{ color: "#00F9E4" }}>Verificando acesso…</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen overflow-x-hidden" style={{ background: "#0A0A0A", maxWidth: "100%", width: "100%" }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: "#0A0A0A", maxWidth: "100%", width: "100%" }}>
       <AdminSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <motion.header
           initial={{ y: -20, opacity: 0 }}
@@ -266,27 +277,11 @@ export function CheckInsPage() {
               <UserPlus size={16} />
             </button>
 
-            <button
-              onClick={() => navigate("/recepcao")}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider sm:tracking-widest transition-all whitespace-nowrap"
-              style={{ background: "#00F9E4", color: "#0A0A0A" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 30px rgba(0, 249, 228, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-              }}
-            >
-              <QrCode size={14} />
-              <span className="hidden sm:inline">Ativar Recepção</span>
-              <span className="sm:hidden">Recepção</span>
-            </button>
           </div>
         </motion.header>
 
         {/* Content */}
-        <main className="flex-1 px-4 md:px-8 py-6 pb-20 md:pb-6">
+        <main className="px-4 md:px-10 flex-1 overflow-y-auto py-6 pb-20 md:pb-6">
           {/* Cards de Métricas */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -553,14 +548,6 @@ export function CheckInsPage() {
                 <p className="text-sm mb-4" style={{ color: "#606060" }}>
                   Os check-ins aparecem após a recepção confirmar a presença.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => navigate("/recepcao")}
-                  className="px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest"
-                  style={{ background: "#00F9E4", color: "#0A0A0A" }}
-                >
-                  Abrir recepção
-                </button>
               </div>
             )}
 

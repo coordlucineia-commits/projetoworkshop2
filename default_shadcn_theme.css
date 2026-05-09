@@ -118,3 +118,15 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+.elemento {
+  /* IE e Edge */
+  -ms-overflow-style: none;
+  /* Firefox */
+  scrollbar-width: none;
+  /* Safari, Chrome, Opera */
+  overflow: -moz-scrollbars-none; /* Antigo Firefox */
+}
+
+.elemento::-webkit-scrollbar {
+  display: none; /* Safari, Chrome, Opera */
+}

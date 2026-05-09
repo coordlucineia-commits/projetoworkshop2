@@ -1,37 +1,58 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, useMatch } from "react-router";
 import { motion } from "motion/react";
 import {
   ArrowLeft,
   Printer,
-  Save,
   User2,
   Heart,
   AlertTriangle,
   Target,
-  Ruler,
   CreditCard,
   FileCheck,
   ChevronDown,
-  Zap,
   UserPlus,
-  CheckCircle2,
   Eraser,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CadastroFormAccordion, CadastroFormAccordionSection } from "../components/CadastroFormAccordion";
+import { SavePrimaryButton } from "../components/SavePrimaryButton";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { MobileBottomNav } from "../components/MobileBottomNav";
-import type { PlanoRow } from "../../lib/cadastroAluno";
+import { useRequireAdmin } from "../hooks/useRequireAdmin";
+import { useStaffPermissionGuard } from "../hooks/useStaffPermissionGuard";
+import {
+  formatCpfBr,
+  jsonRecordToFormStrings,
+  LABEL_DURACAO_CONTRATO,
+  MESES_CONTRATO,
+  parseDuracaoContratoKey,
+  parseMoneyBr,
+  parseObservacoes,
+  type DuracaoContratoKey,
+  type PlanoRow,
+  dataTerminoPorDataInicioEDuracao,
+  valorTotalContratoLiquido,
+  subtotalContratoBruto,
+  multiplicadorAposDesconto,
+  textoResumoDesconto,
+  DESCONTO_CONTRATO,
+} from "../../lib/cadastroAluno";
+import type { Json } from "../../lib/database.types";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
-import { salvarCadastroAluno } from "../../lib/salvarCadastroAluno";
+import { atualizarCadastroAluno, salvarCadastroAluno } from "../../lib/salvarCadastroAluno";
+import { invokeWelcomeUserCredentials } from "../../lib/welcomeUserCredentials";
+import { DateInputBr } from "../components/DateInputBr";
+import {
+  ESPECIALIDADE_AVALIACAO_CORPORAL,
+  professorTemAvaliacaoCorporal,
+} from "../../lib/professorEspecialidades";
 
 // ─── Reusable form primitives ──────────────────────────────────────────────
 
 const IC =
   "w-full bg-[#1A1A1A] border border-[#303030] rounded-full px-5 py-3 text-white text-sm placeholder:text-[#606060] focus:outline-none transition-all";
-
-const TC =
-  "w-full bg-[#1A1A1A] border border-[#303030] rounded-[16px] px-5 py-3 text-white text-sm placeholder:text-[#606060] focus:outline-none transition-all resize-none";
 
 function focusCian(e: React.FocusEvent<any>) {
   e.currentTarget.style.borderColor = "#00F9E4";
@@ -64,12 +85,14 @@ function SelectField({
   onChange,
   placeholder = "Selecione",
   disabled,
+  includePlaceholder = true,
 }: {
   children: React.ReactNode;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  includePlaceholder?: boolean;
 }) {
   return (
     <div className="relative">
@@ -82,13 +105,12 @@ function SelectField({
         onFocus={focusCian}
         onBlur={blurGray}
       >
-        <option value="">{placeholder}</option>
+        {includePlaceholder ? <option value="">{placeholder}</option> : null}
         {children}
       </select>
       <ChevronDown
         size={15}
-        className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ color: "#606060" }}
+        className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none shrink-0 text-primary"
       />
     </div>
   );
@@ -178,68 +200,15 @@ function QuestionRow({
   );
 }
 
-// Section card wrapper
-function SectionCard({
-  icon,
-  iconColor,
-  iconBg,
-  number,
-  title,
-  optional,
-  children,
-}: {
-  icon: React.ReactNode;
-  iconColor: string;
-  iconBg: string;
-  number: string;
-  title: string;
-  optional?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-[16px] overflow-hidden"
-      style={{ background: "#0D0D0D", border: "1px solid #1E1E1E" }}
-    >
-      {/* Section header */}
-      <div
-        className="flex items-center gap-3 px-6 py-4"
-        style={{ borderBottom: `2px solid ${iconColor}` }}
-      >
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: iconBg }}
-        >
-          {icon}
-        </div>
-        <h2 className="font-black uppercase tracking-tight text-base text-white">
-          {number}. {title}
-        </h2>
-        {optional && (
-          <span
-            className="ml-auto text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full"
-            style={{
-              color: "#606060",
-              border: "1px solid #2A2A2A",
-              background: "transparent",
-            }}
-          >
-            Opcional
-          </span>
-        )}
-      </div>
-      {/* Section body */}
-      <div className="px-6 py-5">{children}</div>
-    </motion.div>
-  );
-}
-
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export function NovoAlunoPage() {
   const navigate = useNavigate();
+  const { ready, checking } = useRequireAdmin();
+  const permGuard = useStaffPermissionGuard("alunos");
+  const editMatch = useMatch("/cadastro/editar/:id");
+  const editAlunoId = editMatch?.params.id;
+  const isEdit = Boolean(editAlunoId);
 
   // ── Section 1: Dados Pessoais ──
   const [nome, setNome] = useState("");
@@ -290,32 +259,30 @@ export function NovoAlunoPage() {
   const [vezesSemana, setVezesSemana] = useState("");
   const [horarioPref, setHorarioPref] = useState("");
 
-  // ── Section 5: Corporais ──
-  const [peso, setPeso] = useState("");
-  const [altura, setAltura] = useState("");
-  const [imc, setImc] = useState("");
-  const [gordura, setGordura] = useState("");
-  const [medidas, setMedidas] = useState("");
+  const [professoresCorp, setProfessoresCorp] = useState<{ id: string; nome: string }[]>([]);
+  const [loadingProfessoresCorp, setLoadingProfessoresCorp] = useState(false);
+  const [avCorpDataIso, setAvCorpDataIso] = useState("");
+  const [avCorpHora, setAvCorpHora] = useState("");
+  const [avCorpProfessorId, setAvCorpProfessorId] = useState("");
 
-  // ── Section 6: Plano (estados antes dos efeitos que os usam) ──
-  const [tipoPlano, setTipoPlano] = useState("");
-  const [valorPlano, setValorPlano] = useState("");
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataVenc, setDataVenc] = useState("");
+  // ── Plano: duração + valor mensal (total = mensal × meses) ──
+  const [duracaoContrato, setDuracaoContrato] = useState<DuracaoContratoKey>("mensal");
+  const [valorMensal, setValorMensal] = useState("");
+  /** Data de início do contrato como `yyyy-mm-dd`. */
+  const [contratoDataInicioIso, setContratoDataInicioIso] = useState("");
   const [formaPagto, setFormaPagto] = useState("");
-  const [planos, setPlanos] = useState<PlanoRow[]>([]);
+  /** UUID no catálogo `planos` ou "" (mensalidade manual). */
+  const [planoCatalogoId, setPlanoCatalogoId] = useState("");
+  const [planosCatalogo, setPlanosCatalogo] = useState<PlanoRow[]>([]);
   const [loadingPlanos, setLoadingPlanos] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const skipPrecoFromCatalogoOnceRef = useRef(false);
 
-  useEffect(() => {
-    const p = parseFloat(peso);
-    const h = parseFloat(altura) / 100;
-    if (p > 0 && h > 0) {
-      setImc((p / (h * h)).toFixed(1));
-    } else {
-      setImc("");
-    }
-  }, [peso, altura]);
+  const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [canvasDirty, setCanvasDirty] = useState(false);
+  const assinaturaExistenteRef = useRef<string | null>(null);
+  const [dbAssinaturaUrl, setDbAssinaturaUrl] = useState<string | null>(null);
+  const wasEditRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,12 +301,12 @@ export function NovoAlunoPage() {
         if (cancelled) return;
         if (error) {
           toast.error("Não foi possível carregar os planos.");
-          setPlanos([]);
+          setPlanosCatalogo([]);
         } else {
-          setPlanos(data ?? []);
+          setPlanosCatalogo(data ?? []);
         }
       } catch {
-        if (!cancelled) toast.error("Supabase não configurado ou indisponível.");
+        if (!cancelled) toast.error("Erro ao carregar planos.");
       } finally {
         if (!cancelled) setLoadingPlanos(false);
       }
@@ -350,19 +317,176 @@ export function NovoAlunoPage() {
   }, []);
 
   useEffect(() => {
-    if (!tipoPlano || tipoPlano === "OUTRO") return;
-    const pl = planos.find((x) => x.id === tipoPlano);
-    if (pl) {
-      setValorPlano(
-        pl.preco.toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }),
-      );
+    let cancelled = false;
+    if (!isSupabaseConfigured) {
+      setLoadingProfessoresCorp(false);
+      return;
     }
-  }, [tipoPlano, planos]);
+    void (async () => {
+      setLoadingProfessoresCorp(true);
+      try {
+        const sb = getSupabase();
+        const { data, error } = await sb
+          .from("professores")
+          .select("id, nome, especialidades, ativo")
+          .eq("ativo", true)
+          .order("nome");
+        if (cancelled) return;
+        if (error) {
+          setProfessoresCorp([]);
+          return;
+        }
+        setProfessoresCorp(
+          (data ?? [])
+            .filter((p) => professorTemAvaliacaoCorporal(p.especialidades))
+            .map((p) => ({ id: p.id, nome: p.nome })),
+        );
+      } catch {
+        if (!cancelled) setProfessoresCorp([]);
+      } finally {
+        if (!cancelled) setLoadingProfessoresCorp(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  // ── Section 7: Termo ──
+  useEffect(() => {
+    if (!planoCatalogoId) return;
+    if (skipPrecoFromCatalogoOnceRef.current) {
+      skipPrecoFromCatalogoOnceRef.current = false;
+      return;
+    }
+    const pl = planosCatalogo.find((x) => x.id === planoCatalogoId);
+    if (!pl || typeof pl.preco !== "number") return;
+    setValorMensal(
+      pl.preco.toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    );
+  }, [planoCatalogoId, planosCatalogo]);
+
+  const contratoDataTerminoIso = useMemo(() => {
+    const dk = parseDuracaoContratoKey(duracaoContrato);
+    if (!dk || !contratoDataInicioIso) return "";
+    return dataTerminoPorDataInicioEDuracao(contratoDataInicioIso, dk) ?? "";
+  }, [contratoDataInicioIso, duracaoContrato]);
+
+  useEffect(() => {
+    if (!isEdit || !editAlunoId || !isSupabaseConfigured) return;
+    let cancelled = false;
+    void (async () => {
+      setLoadingEdit(true);
+      try {
+        const sb = getSupabase();
+        const { data: row, error } = await sb
+          .from("alunos")
+          .select("*")
+          .eq("id", editAlunoId)
+          .single();
+        if (cancelled) return;
+        if (error || !row) {
+          toast.error(error?.message ?? "Aluno não encontrado.");
+          navigate("/alunos", { replace: true });
+          return;
+        }
+        const { data: pags } = await sb
+          .from("pagamentos")
+          .select("*")
+          .eq("aluno_id", editAlunoId)
+          .order("data_vencimento", { ascending: false })
+          .limit(1);
+        if (cancelled) return;
+        const pag = pags?.[0];
+        setNome(row.nome ?? "");
+        setDataNasc(row.data_nascimento?.slice(0, 10) ?? "");
+        setCpf(formatCpfBr(row.cpf ?? ""));
+        setRg((row.rg ?? "").trim());
+        setSexo(row.sexo ?? "");
+        setEstadoCivil(row.estado_civil ?? "");
+        setTelefone((row.telefone ?? "").trim());
+        setEmail((row.email ?? "").trim());
+        setEndereco((row.endereco ?? "").trim());
+        setFotoAluno(row.foto);
+        setAnamnese(jsonRecordToFormStrings(row.anamnese as Json));
+        setParq(jsonRecordToFormStrings(row.parq as Json));
+        const obs = parseObservacoes(row.observacoes);
+        setProfissao(obs.profissao);
+        setContatoEmergencia(obs.contatoEmergencia);
+        setTelEmergencia(obs.telEmergencia);
+        setObjetivo(obs.objetivo);
+        setJaTreinou(obs.jaTreinou);
+        setTempoPratica(obs.tempoPratica);
+        setVezesSemana(obs.vezesSemana);
+        setHorarioPref(obs.horarioPref);
+        const dkEff: DuracaoContratoKey = obs.duracaoContrato || "mensal";
+        setDuracaoContrato(dkEff);
+        skipPrecoFromCatalogoOnceRef.current = true;
+        setPlanoCatalogoId(row.plano_id ?? "");
+        const mj = row.medidas as {
+          assinatura_termo?: string | null;
+        } | null;
+        const sig = mj?.assinatura_termo ?? null;
+        assinaturaExistenteRef.current = sig;
+        setDbAssinaturaUrl(sig);
+        if (pag) {
+          const meses = MESES_CONTRATO[dkEff];
+          const mult = multiplicadorAposDesconto(dkEff);
+          const mensalCalc =
+            meses > 0 && mult > 0 ? pag.valor / (meses * mult) : pag.valor / Math.max(meses, 1);
+          setValorMensal(
+            mensalCalc.toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }),
+          );
+          setFormaPagto(pag.forma_pagamento ?? "PIX");
+          const ini = pag.descricao?.match(/início\s+(\d{4}-\d{2}-\d{2})/);
+          const startIso = (ini?.[1] ?? row.created_at.slice(0, 10)).slice(0, 10);
+          setContratoDataInicioIso(startIso);
+        } else {
+          setValorMensal("");
+          setFormaPagto("PIX");
+          setContratoDataInicioIso(row.created_at.slice(0, 10));
+        }
+        const { data: agRow } = await sb
+          .from("avaliacoes_agenda")
+          .select("professor_id, inicio_at")
+          .eq("aluno_id", editAlunoId)
+          .eq("status", "agendado")
+          .order("inicio_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled) return;
+        if (agRow?.inicio_at) {
+          const dt = new Date(agRow.inicio_at);
+          setAvCorpDataIso(
+            `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`,
+          );
+          setAvCorpHora(
+            `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`,
+          );
+          setAvCorpProfessorId(agRow.professor_id ?? "");
+        } else {
+          setAvCorpDataIso("");
+          setAvCorpHora("");
+          setAvCorpProfessorId("");
+        }
+        setCanvasDirty(false);
+      } catch {
+        if (!cancelled) toast.error("Erro ao carregar aluno.");
+      } finally {
+        if (!cancelled) setLoadingEdit(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, editAlunoId, navigate]);
+
+  // ── Termo ──
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
@@ -378,6 +502,7 @@ export function NovoAlunoPage() {
 
   const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
+    setCanvasDirty(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     setIsDrawing(true);
@@ -406,11 +531,67 @@ export function NovoAlunoPage() {
   const stopDraw = () => setIsDrawing(false);
 
   const clearCanvas = () => {
+    setCanvasDirty(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx?.clearRect(0, 0, canvas.width, canvas.height);
   };
+
+  useEffect(() => {
+    if (!dbAssinaturaUrl || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = dbAssinaturaUrl;
+  }, [dbAssinaturaUrl]);
+
+  useEffect(() => {
+    if (wasEditRef.current && !isEdit) {
+      setNome("");
+      setDataNasc("");
+      setCpf("");
+      setRg("");
+      setSexo("");
+      setEstadoCivil("");
+      setProfissao("");
+      setTelefone("");
+      setEmail("");
+      setEndereco("");
+      setContatoEmergencia("");
+      setTelEmergencia("");
+      setFotoAluno(null);
+      setAnamnese({});
+      setParq({});
+      setObjetivo("");
+      setJaTreinou("");
+      setTempoPratica("");
+      setVezesSemana("");
+      setHorarioPref("");
+      setDuracaoContrato("mensal");
+      setValorMensal("");
+      setContratoDataInicioIso("");
+      setFormaPagto("");
+      setPlanoCatalogoId("");
+      setAvCorpDataIso("");
+      setAvCorpHora("");
+      setAvCorpProfessorId("");
+      setDbAssinaturaUrl(null);
+      assinaturaExistenteRef.current = null;
+      setCanvasDirty(false);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    wasEditRef.current = isEdit;
+  }, [isEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -418,9 +599,39 @@ export function NovoAlunoPage() {
       toast.error("Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env");
       return;
     }
+    if (isEdit && loadingEdit) return;
+    if (!contratoDataInicioIso) {
+      toast.error("Informe a data de início do contrato no formato DD/MM/AAAA.");
+      return;
+    }
+    const dkSubmit = parseDuracaoContratoKey(duracaoContrato);
+    if (!dkSubmit || !contratoDataTerminoIso) {
+      toast.error("Não foi possível calcular a data de término. Verifique início e duração.");
+      return;
+    }
+    if (professoresCorp.length === 0 && !loadingProfessoresCorp) {
+      toast.error(
+        `Cadastre um professor ativo com a especialidade «${ESPECIALIDADE_AVALIACAO_CORPORAL}» antes de matricular.`,
+      );
+      return;
+    }
+    if (!avCorpProfessorId.trim() || !avCorpDataIso.trim() || !avCorpHora.trim()) {
+      toast.error("Preencha data, horário e professor da avaliação corporal.");
+      return;
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(avCorpHora.trim())) {
+      toast.error("Informe o horário da avaliação no formato HH:mm (24h).");
+      return;
+    }
+    if (!professoresCorp.some((p) => p.id === avCorpProfessorId)) {
+      toast.error("Selecione um professor habilitado em avaliação corporal.");
+      return;
+    }
     const canvas = canvasRef.current;
     let assinaturaPng: string | null = null;
-    if (canvas) {
+    if (isEdit && !canvasDirty && assinaturaExistenteRef.current) {
+      assinaturaPng = assinaturaExistenteRef.current;
+    } else if (canvas) {
       try {
         assinaturaPng = canvas.toDataURL("image/png");
       } catch {
@@ -429,8 +640,25 @@ export function NovoAlunoPage() {
     }
     setSaving(true);
     try {
+      const dk = parseDuracaoContratoKey(duracaoContrato);
+      const vMes = parseMoneyBr(valorMensal);
+      const totalLiquido =
+        dk && vMes != null ? valorTotalContratoLiquido(vMes, dk) : NaN;
+      const valorPlanoFmt = Number.isFinite(totalLiquido)
+        ? totalLiquido.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        : "";
+
+      const pid = planoCatalogoId.trim();
+      const planoNomeCatalogo =
+        pid && planosCatalogo.length
+          ? planosCatalogo.find((x) => x.id === pid)?.nome ?? null
+          : null;
+
       const sb = getSupabase();
-      const res = await salvarCadastroAluno(sb, {
+      const payload = {
         nome,
         dataNasc,
         cpf,
@@ -452,20 +680,53 @@ export function NovoAlunoPage() {
         tempoPratica,
         vezesSemana,
         horarioPref,
-        peso,
-        altura,
-        imc,
-        gordura,
-        medidasTexto: medidas,
-        tipoPlano,
-        valorPlano,
-        dataInicio,
-        dataVenc,
+        duracaoContrato,
+        valorMensal,
+        valorPlano: valorPlanoFmt,
+        planoCatalogoId: pid || null,
+        planoCatalogoNome: planoNomeCatalogo,
+        dataInicio: contratoDataInicioIso,
+        dataVenc: contratoDataTerminoIso,
         formaPagto,
         assinaturaPng,
-      });
-      toast.success(`Aluno ${res.matricula} cadastrado. PIN de check-in: ${res.pin}`);
-      navigate("/dashboard");
+        avaliacaoCorporal: {
+          professorId: avCorpProfessorId.trim(),
+          dataYmd: avCorpDataIso.trim(),
+          hora: avCorpHora.trim(),
+        },
+      };
+      if (isEdit && editAlunoId) {
+        await atualizarCadastroAluno(sb, editAlunoId, payload);
+        toast.success("Cadastro do aluno atualizado.");
+        navigate("/alunos");
+      } else {
+        const res = await salvarCadastroAluno(sb, payload);
+
+        const cred = await invokeWelcomeUserCredentials(sb, {
+          kind: "aluno",
+          entity_id: res.alunoId,
+        });
+        if (cred.error) {
+          toast.error(`Aluno cadastrado (PIN ${res.pin}), mas falha ao criar login/e-mail: ${cred.error}`, {
+            duration: 14_000,
+          });
+          navigate("/dashboard");
+          return;
+        }
+        if (cred.emailSent) {
+          toast.success(
+            `Aluno ${res.matricula} cadastrado. PIN de check-in: ${res.pin}. E-mail com login e senha temporária enviado.`,
+          );
+        } else if (cred.temporaryPassword) {
+          toast.warning(
+            `Aluno ${res.matricula}. PIN ${res.pin}. Sem e-mail configurado — informe ao aluno: login ${cred.email ?? email.trim()} · senha temporária ${cred.temporaryPassword}`,
+            { duration: 25_000 },
+          );
+        } else {
+          toast.success(`Aluno ${res.matricula} cadastrado. PIN de check-in: ${res.pin}`);
+        }
+        navigate("/dashboard");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar cadastro.";
       toast.error(msg);
@@ -503,9 +764,17 @@ export function NovoAlunoPage() {
       setter(masked);
     };
 
+  if (checking || permGuard.checking || !ready) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#0A0A0A]" style={{ fontFamily: "monospace", fontSize: 12 }}>
+        <span style={{ color: "#00F9E4" }}>Verificando acesso…</span>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="min-h-screen flex overflow-x-hidden"
+      className="h-screen flex overflow-hidden"
       style={{ background: "#0A0A0A", color: "#F5F5F5", maxWidth: "100%", width: "100%" }}
     >
       <AdminSidebar />
@@ -521,17 +790,20 @@ export function NovoAlunoPage() {
           {/* Breadcrumb */}
           <div className="hidden md:flex items-center gap-2 text-xs font-mono uppercase tracking-widest">
             <button
-              onClick={() => navigate("/dashboard")}
+              type="button"
+              onClick={() => navigate(isEdit ? "/alunos" : "/dashboard")}
               style={{ color: "#606060" }}
               className="hover:text-white transition-colors"
             >
-              Novo Aluno
+              {isEdit ? "Alunos" : "Novo Aluno"}
             </button>
             <span style={{ color: "#3A3A3A" }}>/</span>
-            <span style={{ color: "#00F9E4" }}>Cadastro de Novo Aluno</span>
+            <span style={{ color: "#00F9E4" }}>
+              {isEdit ? "Editar cadastro" : "Cadastro de Novo Aluno"}
+            </span>
           </div>
           <div className="md:hidden font-black uppercase tracking-tight text-lg" style={{ color: "#F2F2F2" }}>
-            CADASTRO
+            {isEdit ? "EDITAR" : "CADASTRO"}
           </div>
 
           {/* Action buttons */}
@@ -565,23 +837,6 @@ export function NovoAlunoPage() {
             >
               <UserPlus size={16} />
             </button>
-            <button
-              onClick={() => navigate("/recepcao")}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap"
-              style={{ background: "#00F9E4", color: "#0A0A0A" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#33FFEE";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(0,249,228,0.3)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#00F9E4";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-              }}
-            >
-              <Zap size={14} />
-              <span className="hidden sm:inline">Ativar Recepção</span>
-              <span className="sm:hidden">Recepção</span>
-            </button>
           </div>
         </header>
 
@@ -594,7 +849,7 @@ export function NovoAlunoPage() {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(isEdit ? "/alunos" : "/dashboard")}
               className="hidden md:flex items-center gap-2 text-sm font-mono uppercase tracking-wider transition-colors"
               style={{ color: "#606060" }}
               onMouseEnter={(e) =>
@@ -604,7 +859,7 @@ export function NovoAlunoPage() {
                 ((e.currentTarget as HTMLButtonElement).style.color = "#606060")
               }
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={16} className="shrink-0 text-primary" />
               Voltar
             </button>
             <div
@@ -615,7 +870,7 @@ export function NovoAlunoPage() {
               className="font-black uppercase tracking-tight text-sm md:text-lg"
               style={{ color: "#F2F2F2" }}
             >
-              Cadastrar Novo Aluno
+              {isEdit ? "Editar cadastro do aluno" : "Cadastrar Novo Aluno"}
             </h1>
           </div>
 
@@ -639,40 +894,41 @@ export function NovoAlunoPage() {
               <Printer size={14} />
               Imprimir
             </button>
-            <button
+            <SavePrimaryButton
               type="submit"
               form="form-novo-aluno"
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-mono uppercase tracking-wider transition-all disabled:opacity-50"
-              style={{ background: "#00F9E4", color: "#0A0A0A" }}
-              onMouseEnter={(e) => {
-                if (saving) return;
-                (e.currentTarget as HTMLButtonElement).style.background = "#33FFEE";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 20px rgba(0,249,228,0.3)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#00F9E4";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-              }}
+              preset="form"
+              loading={saving || loadingEdit}
+              className="px-5 py-2"
             >
-              <Save size={14} />
-              {saving ? "Salvando…" : "Salvar Cadastro"}
-            </button>
+              {isEdit ? "Salvar alterações" : "Salvar cadastro"}
+            </SavePrimaryButton>
           </div>
         </div>
 
         {/* ── Scrollable Form ── */}
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-0 min-w-0">
+        <main className="px-4 md:px-10 relative flex-1 overflow-y-auto pb-20 md:pb-0 min-w-0">
+          {loadingEdit && (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3"
+              style={{ background: "rgba(10,10,10,0.85)" }}
+            >
+              <p className="font-mono text-xs uppercase tracking-widest" style={{ color: "#00F9E4" }}>
+                Carregando dados…
+              </p>
+            </div>
+          )}
           <form
             id="form-novo-aluno"
             onSubmit={handleSubmit}
-            className="w-full min-w-0 px-4 md:px-6 py-6 space-y-5 box-border"
+            aria-busy={loadingEdit}
+            className={`w-[95%] mx-auto min-w-0 px-0 md:px-2 py-6 box-border ${loadingEdit ? "pointer-events-none opacity-40" : ""}`}
           >
 
-            {/* ═══ SECTION 1: DADOS PESSOAIS ═══ */}
-            <SectionCard
-              number="1"
+            <CadastroFormAccordion defaultValue={["cad-aluno-1"]}>
+            <CadastroFormAccordionSection
+              value="cad-aluno-1"
+              ordinal="1"
               title="Dados Pessoais"
               icon={<User2 size={16} style={{ color: "#00F9E4" }} />}
               iconColor="#00F9E4"
@@ -759,14 +1015,14 @@ export function NovoAlunoPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <FieldLabel required>Data de Nascimento</FieldLabel>
-                    <input
-                      type="date"
-                      className={IC}
-                      style={{ colorScheme: "dark" }}
-                      value={dataNasc}
-                      onChange={(e) => setDataNasc(e.target.value)}
+                    <DateInputBr
+                      inputClassName={IC}
+                      valueIso={dataNasc}
+                      onChangeIso={setDataNasc}
+                      disabled={saving || loadingEdit}
                       onFocus={focusCian}
                       onBlur={blurGray}
+                      required
                     />
                   </div>
                   <div>
@@ -901,11 +1157,11 @@ export function NovoAlunoPage() {
                   </div>
                 </div>
               </div>
-            </SectionCard>
+            </CadastroFormAccordionSection>
 
-            {/* ═══ SECTION 2: ANAMNESE ═══ */}
-            <SectionCard
-              number="2"
+            <CadastroFormAccordionSection
+              value="cad-aluno-2"
+              ordinal="2"
               title="Dados de Saúde (Anamnese Básica)"
               icon={<Heart size={16} style={{ color: "#EF4444" }} />}
               iconColor="#EF4444"
@@ -947,11 +1203,11 @@ export function NovoAlunoPage() {
                   />
                 ))}
               </div>
-            </SectionCard>
+            </CadastroFormAccordionSection>
 
-            {/* ═══ SECTION 3: PAR-Q ═══ */}
-            <SectionCard
-              number="3"
+            <CadastroFormAccordionSection
+              value="cad-aluno-3"
+              ordinal="3"
               title="Questionário PAR-Q (Prontidão para Atividade Física)"
               icon={<AlertTriangle size={16} style={{ color: "#FACC15" }} />}
               iconColor="#FACC15"
@@ -1027,11 +1283,11 @@ export function NovoAlunoPage() {
                   </p>
                 </motion.div>
               )}
-            </SectionCard>
+            </CadastroFormAccordionSection>
 
-            {/* ═══ SECTION 4: OBJETIVOS ═══ */}
-            <SectionCard
-              number="4"
+            <CadastroFormAccordionSection
+              value="cad-aluno-4"
+              ordinal="4"
               title="Objetivos do Aluno"
               icon={<Target size={16} style={{ color: "#00F9E4" }} />}
               iconColor="#00F9E4"
@@ -1122,153 +1378,64 @@ export function NovoAlunoPage() {
                   </div>
                 </div>
               </div>
-            </SectionCard>
+            </CadastroFormAccordionSection>
 
-            {/* ═══ SECTION 5: INFORMAÇÕES CORPORAIS ═══ */}
-            <SectionCard
-              number="5"
-              title="Informações Corporais (Avaliação Inicial)"
-              icon={<Ruler size={16} style={{ color: "#8B5CF6" }} />}
-              iconColor="#8B5CF6"
-              iconBg="rgba(139,92,246,0.12)"
-              optional
-            >
-              <div className="space-y-4">
-                {/* Peso + Altura + IMC + %Gordura */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <FieldLabel>Peso</FieldLabel>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        className={IC + " pr-12"}
-                        placeholder="0"
-                        value={peso}
-                        onChange={(e) => setPeso(e.target.value)}
-                        onFocus={focusCian}
-                        onBlur={blurGray}
-                      />
-                      <span
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono"
-                        style={{ color: "#606060" }}
-                      >
-                        KG
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <FieldLabel>Altura</FieldLabel>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        className={IC + " pr-12"}
-                        placeholder="0"
-                        value={altura}
-                        onChange={(e) => setAltura(e.target.value)}
-                        onFocus={focusCian}
-                        onBlur={blurGray}
-                      />
-                      <span
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono"
-                        style={{ color: "#606060" }}
-                      >
-                        CM
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <FieldLabel>IMC</FieldLabel>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className={IC}
-                        placeholder="Auto"
-                        value={imc}
-                        readOnly
-                        style={{
-                          borderColor: imc ? "#00F9E4" : "#303030",
-                          color: imc ? "#00F9E4" : "#606060",
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <FieldLabel>% Gordura</FieldLabel>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        className={IC + " pr-8"}
-                        placeholder="0"
-                        value={gordura}
-                        onChange={(e) => setGordura(e.target.value)}
-                        onFocus={focusCian}
-                        onBlur={blurGray}
-                      />
-                      <span
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono"
-                        style={{ color: "#606060" }}
-                      >
-                        %
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Medidas */}
-                <div>
-                  <FieldLabel>Medidas Corporais</FieldLabel>
-                  <textarea
-                    className={TC}
-                    rows={3}
-                    placeholder="Ex: Braço 35cm, Cintura 80cm, Quadril 96cm"
-                    value={medidas}
-                    onChange={(e) => setMedidas(e.target.value)}
-                    onFocus={focusCian}
-                    onBlur={blurGray}
-                  />
-                </div>
-              </div>
-            </SectionCard>
-
-            {/* ═══ SECTION 6: PLANO CONTRATADO ═══ */}
-            <SectionCard
-              number="6"
+            <CadastroFormAccordionSection
+              value="cad-aluno-5"
+              ordinal="5"
               title="Plano Contratado"
               icon={<CreditCard size={16} style={{ color: "#4ADE80" }} />}
               iconColor="#4ADE80"
               iconBg="rgba(74,222,128,0.12)"
             >
               <div className="space-y-4">
-                {/* Tipo + Valor */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div>
-                    <FieldLabel required>Tipo de Plano</FieldLabel>
+                    <FieldLabel>Plano</FieldLabel>
                     <SelectField
-                      value={tipoPlano}
-                      onChange={setTipoPlano}
-                      disabled={loadingPlanos || saving}
+                      value={planoCatalogoId}
+                      onChange={setPlanoCatalogoId}
+                      disabled={saving || loadingPlanos}
+                      placeholder={loadingPlanos ? "Carregando…" : "Outro — valor manual"}
                     >
-                      {loadingPlanos ? (
-                        <option value="">Carregando planos…</option>
-                      ) : (
-                        <>
-                          {planos.map((pl) => (
-                            <option key={pl.id} value={pl.id}>
-                              {pl.nome} —{" "}
-                              {pl.preco.toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              })}
-                              /mês
-                            </option>
-                          ))}
-                          <option value="OUTRO">Outro (valor manual)</option>
-                        </>
+                      {planosCatalogo.map((pl) => (
+                        <option key={pl.id} value={pl.id}>
+                          {pl.nome} —{" "}
+                          {pl.preco.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                          /mês
+                        </option>
+                      ))}
+                    </SelectField>
+                    <p className="text-xs mt-2" style={{ color: "#606060" }}>
+                      Sem seleção = mensalidade informada apenas no campo ao lado dos meses de duração.
+                    </p>
+                  </div>
+                  <div>
+                    <FieldLabel required>Duração</FieldLabel>
+                    <SelectField
+                      value={duracaoContrato}
+                      onChange={(v) =>
+                        setDuracaoContrato(
+                          (parseDuracaoContratoKey(v) || "mensal") as DuracaoContratoKey,
+                        )
+                      }
+                      includePlaceholder={false}
+                      disabled={saving}
+                    >
+                      {(Object.keys(LABEL_DURACAO_CONTRATO) as DuracaoContratoKey[]).map(
+                        (key) => (
+                          <option key={key} value={key}>
+                            {LABEL_DURACAO_CONTRATO[key]}
+                          </option>
+                        ),
                       )}
                     </SelectField>
                   </div>
                   <div>
-                    <FieldLabel required>Valor (R$)</FieldLabel>
+                    <FieldLabel required>Valor mensal (R$)</FieldLabel>
                     <div className="relative">
                       <span
                         className="absolute left-5 top-1/2 -translate-y-1/2 text-sm font-mono"
@@ -1280,41 +1447,114 @@ export function NovoAlunoPage() {
                         type="text"
                         className={IC + " pl-10"}
                         placeholder="0,00"
-                        value={valorPlano}
-                        onChange={(e) => setValorPlano(e.target.value)}
+                        value={valorMensal}
+                        onChange={(e) => setValorMensal(e.target.value)}
                         onFocus={focusCian}
                         onBlur={blurGray}
                         disabled={saving}
-                        readOnly={tipoPlano !== "" && tipoPlano !== "OUTRO"}
                       />
                     </div>
                   </div>
                 </div>
 
+                <div
+                  className="rounded-[12px] px-4 py-3 text-sm space-y-2"
+                  style={{ background: "#0A0A0A", border: "1px solid #1E1E1E" }}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span
+                      className="font-mono uppercase text-[10px] tracking-wider"
+                      style={{ color: "#606060" }}
+                    >
+                      Valor total do contrato
+                    </span>
+                    <span className="font-bold text-[#00F9E4] text-base">
+                      {(() => {
+                        const dk = parseDuracaoContratoKey(duracaoContrato);
+                        const vm = parseMoneyBr(valorMensal);
+                        if (!dk || vm == null) return "—";
+                        const liq = valorTotalContratoLiquido(vm, dk);
+                        return liq.toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        });
+                      })()}
+                    </span>
+                  </div>
+                  {(() => {
+                    const dk = parseDuracaoContratoKey(duracaoContrato);
+                    const vm = parseMoneyBr(valorMensal);
+                    if (!dk || vm == null) return null;
+                    const meses = MESES_CONTRATO[dk];
+                    const bruto = subtotalContratoBruto(vm, dk);
+                    const liq = valorTotalContratoLiquido(vm, dk);
+                    const d = DESCONTO_CONTRATO[dk];
+                    return (
+                      <div className="text-xs space-y-1" style={{ color: "#A8A8A8" }}>
+                        <p>
+                          Bruto:{" "}
+                          <span style={{ color: "#CFCFCF" }}>
+                            {bruto.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </span>{" "}
+                          ({meses} {meses === 1 ? "mês" : "meses"} × valor mensal)
+                        </p>
+                        <p>
+                          {d > 0 ? (
+                            <>
+                              Desconto ({Math.round(d * 100)}%):{" "}
+                              <span style={{ color: "#00F9E4" }}>
+                                −
+                                {(bruto - liq).toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </span>
+                            </>
+                          ) : (
+                            <span>Sem desconto sobre o pacote mensal.</span>
+                          )}
+                        </p>
+                        <p className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#606060" }}>
+                          {textoResumoDesconto(dk)}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {/* Datas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel required>Data de Início</FieldLabel>
-                    <input
-                      type="date"
-                      className={IC}
-                      style={{ colorScheme: "dark" }}
-                      value={dataInicio}
-                      onChange={(e) => setDataInicio(e.target.value)}
+                    <FieldLabel required>Data de início</FieldLabel>
+                    <DateInputBr
+                      inputClassName={IC}
+                      valueIso={contratoDataInicioIso}
+                      onChangeIso={setContratoDataInicioIso}
+                      disabled={saving || loadingEdit}
                       onFocus={focusCian}
                       onBlur={blurGray}
+                      required
                     />
+                    <p className="text-xs mt-2" style={{ color: "#606060" }}>
+                      Digite dia/mês/ano ou toque no ícone para escolher no calendário. O término é
+                      calculado pela duração.
+                    </p>
                   </div>
                   <div>
-                    <FieldLabel required>Data de Vencimento</FieldLabel>
-                    <input
-                      type="date"
-                      className={IC}
-                      style={{ colorScheme: "dark" }}
-                      value={dataVenc}
-                      onChange={(e) => setDataVenc(e.target.value)}
-                      onFocus={focusCian}
-                      onBlur={blurGray}
+                    <FieldLabel required>Data de término / vencimento</FieldLabel>
+                    <DateInputBr
+                      inputClassName={IC + " cursor-not-allowed opacity-90"}
+                      valueIso={contratoDataTerminoIso}
+                      onChangeIso={() => {}}
+                      readOnly
+                      hideCalendarButton
+                      placeholder="—"
+                      title="Preenchida ao informar início e duração"
                     />
                   </div>
                 </div>
@@ -1336,11 +1576,84 @@ export function NovoAlunoPage() {
                   </SelectField>
                 </div>
               </div>
-            </SectionCard>
+            </CadastroFormAccordionSection>
 
-            {/* ═══ SECTION 7: TERMO DE RESPONSABILIDADE ═══ */}
-            <SectionCard
-              number="7"
+            <CadastroFormAccordionSection
+              value="cad-aluno-6"
+              ordinal="6"
+              title="Agendamento — Avaliação corporal"
+              icon={<Activity size={16} style={{ color: "#F472B6" }} />}
+              iconColor="#F472B6"
+              iconBg="rgba(244,114,182,0.12)"
+            >
+              <div className="space-y-4">
+                <p className="text-sm leading-relaxed" style={{ color: "#A8A8A8" }}>
+                  Combine data e hora com um profissional que possua a especialidade «
+                  <span style={{ color: "#F472B6" }}>{ESPECIALIDADE_AVALIACAO_CORPORAL}</span>
+                  ». O período registrado equivale a 45&nbsp;min na agenda da academia.
+                </p>
+                {professoresCorp.length === 0 && !loadingProfessoresCorp ? (
+                  <p className="text-sm rounded-xl px-4 py-3" style={{ background: "#1A1518", border: "1px solid #3f2f36", color: "#F87171" }}>
+                    Nenhum professor ativo com essa especialidade. Em «Professores», edite o cadastro e
+                    marque {ESPECIALIDADE_AVALIACAO_CORPORAL} nas especialidades.
+                  </p>
+                ) : null}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <FieldLabel required>Data</FieldLabel>
+                    <DateInputBr
+                      inputClassName={IC}
+                      valueIso={avCorpDataIso}
+                      onChangeIso={setAvCorpDataIso}
+                      disabled={saving || loadingEdit}
+                      onFocus={focusCian}
+                      onBlur={blurGray}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>Horário</FieldLabel>
+                    <input
+                      type="time"
+                      step={300}
+                      className={IC}
+                      style={{ colorScheme: "dark" }}
+                      value={avCorpHora}
+                      onChange={(e) => setAvCorpHora(e.target.value)}
+                      onFocus={focusCian}
+                      onBlur={blurGray}
+                      disabled={saving || loadingEdit}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel required>Professor</FieldLabel>
+                  <SelectField
+                    value={avCorpProfessorId}
+                    onChange={setAvCorpProfessorId}
+                    disabled={saving || loadingEdit || loadingProfessoresCorp || professoresCorp.length === 0}
+                    placeholder={
+                      loadingProfessoresCorp
+                        ? "Carregando professores…"
+                        : professoresCorp.length === 0
+                          ? "Nenhum disponível"
+                          : "Selecione o professor"
+                    }
+                  >
+                    {professoresCorp.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+              </div>
+            </CadastroFormAccordionSection>
+
+            <CadastroFormAccordionSection
+              value="cad-aluno-7"
+              ordinal="7"
               title="Termo de Responsabilidade"
               icon={<FileCheck size={16} style={{ color: "#00F9E4" }} />}
               iconColor="#00F9E4"
@@ -1421,12 +1734,12 @@ export function NovoAlunoPage() {
                 {/* Data */}
                 <div className="w-48">
                   <FieldLabel>Data</FieldLabel>
-                  <input
-                    type="date"
-                    className={IC}
-                    style={{ colorScheme: "dark" }}
-                    defaultValue={today}
+                  <DateInputBr
+                    inputClassName={IC}
+                    valueIso={today}
+                    onChangeIso={() => {}}
                     readOnly
+                    hideCalendarButton
                   />
                 </div>
 
@@ -1435,30 +1748,25 @@ export function NovoAlunoPage() {
 
                 {/* REGISTRAR button */}
                 <div className="flex justify-end">
-                  <motion.button
-                    type="submit"
-                    disabled={saving}
-                    whileHover={{ scale: saving ? 1 : 1.02 }}
-                    whileTap={{ scale: saving ? 1 : 0.98 }}
-                    className="flex items-center gap-3 px-8 py-4 rounded-full font-black uppercase tracking-wider text-sm transition-all disabled:opacity-50"
-                    style={{ background: "#00F9E4", color: "#0A0A0A" }}
-                    onMouseEnter={(e) => {
-                      if (saving) return;
-                      (e.currentTarget as HTMLButtonElement).style.background = "#33FFEE";
-                      (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                        "0 0 30px rgba(0,249,228,0.35)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "#00F9E4";
-                      (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-                    }}
+                  <motion.div
+                    className="w-full lg:w-fit"
+                    whileHover={{ scale: saving || loadingEdit ? 1 : 1.02 }}
+                    whileTap={{ scale: saving || loadingEdit ? 1 : 0.98 }}
                   >
-                    <CheckCircle2 size={18} />
-                    {saving ? "Salvando…" : "REGISTRAR ALUNO"}
-                  </motion.button>
+                    <SavePrimaryButton
+                      type="submit"
+                      form="form-novo-aluno"
+                      preset="hero"
+                      loading={saving || loadingEdit}
+                      className="w-full lg:w-fit"
+                    >
+                      {isEdit ? "Salvar alterações" : "Registrar aluno"}
+                    </SavePrimaryButton>
+                  </motion.div>
                 </div>
               </div>
-            </SectionCard>
+            </CadastroFormAccordionSection>
+            </CadastroFormAccordion>
 
           </form>
         </main>

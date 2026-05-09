@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Filter,
   Sun,
-  Zap,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -31,6 +30,8 @@ import { AlunoAvatar } from "./AlunoAvatar";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { initialsFromName, startOfLocalDay, statusFinanceiroToLabel, timeAgoPt } from "../../lib/displayHelpers";
 import type { Database } from "../../lib/database.types";
+import { useRequireAdmin } from "../hooks/useRequireAdmin";
+import { useStaffPermissionGuard } from "../hooks/useStaffPermissionGuard";
 
 interface DashboardProps {
   onLogout?: () => void;
@@ -126,6 +127,8 @@ type Tourist = {
 
 export function Dashboard({ onLogout }: DashboardProps) {
   const navigate = useNavigate();
+  const { ready, checking } = useRequireAdmin();
+  const dashPerm = useStaffPermissionGuard("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ativos, setAtivos] = useState(0);
@@ -154,6 +157,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
   }, []);
 
   const carregar = useCallback(async () => {
+    if (!ready) return;
     if (!isSupabaseConfigured) {
       setLoadError("Configure o Supabase no .env");
       setIsLoading(false);
@@ -270,11 +274,31 @@ export function Dashboard({ onLogout }: DashboardProps) {
     setNovosMes(alunos.filter((a) => new Date(a.created_at) >= firstOfMonth).length);
 
     setIsLoading(false);
-  }, []);
+  }, [ready]);
 
   useEffect(() => {
     void carregar();
-  }, [carregar]);
+  }, [carregar, ready]);
+
+  if (checking || dashPerm.checking || !ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div
+            className="w-14 h-14 rounded-full border-4 border-t-transparent animate-spin"
+            style={{ borderColor: "#00F9E4", borderTopColor: "transparent" }}
+          />
+          <p className="font-mono text-xs uppercase tracking-widest" style={{ color: "#00F9E4" }}>
+            Carregando...
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -386,28 +410,11 @@ export function Dashboard({ onLogout }: DashboardProps) {
               <UserPlus size={16} />
             </button>
 
-            <button
-              onClick={() => navigate("/recepcao")}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider transition-all whitespace-nowrap"
-              style={{ background: "#00F9E4", color: "#0A0A0A" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#33FFEE";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(0,249,228,0.3)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "#00F9E4";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-              }}
-            >
-              <Zap size={14} />
-              <span className="hidden sm:inline">Ativar Recepção</span>
-              <span className="sm:hidden">Recepção</span>
-            </button>
           </div>
         </motion.header>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-5 space-y-4 pb-20 md:pb-5">
+        <main className="px-4 md:px-10 flex-1 overflow-y-auto py-5 space-y-4 pb-20 md:pb-5">
           {loadError && (
             <div
               className="p-3 rounded-[12px] text-sm"
@@ -652,7 +659,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
                 onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#606060")}
               >
                 Últimos 12 meses
-                <ChevronDown size={14} />
+                <ChevronDown size={14} className="shrink-0 text-primary" />
               </button>
               <button
                 className="flex items-center gap-1 text-sm font-medium transition-colors"
@@ -661,7 +668,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
                 onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#00F9E4")}
               >
                 Ver todos os membros
-                <ArrowRight size={14} />
+                <ArrowRight size={14} className="shrink-0 text-primary" />
               </button>
             </div>
           </motion.div>
@@ -726,7 +733,10 @@ export function Dashboard({ onLogout }: DashboardProps) {
                     {/* Plan */}
                     <div className="flex items-center gap-2 shrink-0">
                       <PlanBadge plan={member.plan} />
-                      <ArrowRight size={14} style={{ color: "#606060" }} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowRight
+                        size={14}
+                        className="shrink-0 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
                     </div>
                   </motion.div>
                 ))}
@@ -804,7 +814,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
                   onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#00F9E4")}
                 >
                   Ver todos os {totalTuristas} turista{totalTuristas === 1 ? "" : "s"}
-                  <ArrowRight size={13} />
+                  <ArrowRight size={13} className="shrink-0 text-primary" />
                 </button>
               </div>
             </motion.div>

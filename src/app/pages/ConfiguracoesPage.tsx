@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import type { ElementType } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
+import { useStaffSession } from "../context/StaffSessionContext";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import type { Database as SupabaseSchema, Json } from "../../lib/database.types";
 import { AdminSidebar } from "../components/AdminSidebar";
@@ -14,7 +16,6 @@ import {
   ShieldCheck,
   CreditCard,
   Settings2,
-  Save,
   X,
   Plus,
   Eye,
@@ -29,9 +30,11 @@ import {
   CalendarDays,
   ExternalLink,
   Trash2,
+  Loader2,
   User,
   Star,
 } from "lucide-react";
+import { SavePrimaryButton } from "../components/SavePrimaryButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = "geral" | "perfil" | "planos" | "sistema";
@@ -101,7 +104,7 @@ function PillInput({
         className="flex items-center gap-3 px-4 py-3 rounded-full"
         style={{ background: "#1A1A1A", border: "1px solid #303030" }}
       >
-        {Icon && <Icon size={16} style={{ color: "#606060", flexShrink: 0 }} />}
+        {Icon && <Icon size={16} style={{ color: type === "time" ? "#00F9E4" : "#606060", flexShrink: 0 }} />}
         <input
           type={type}
           value={value}
@@ -170,22 +173,9 @@ function ActionBar({ onCancel, onSave }: { onCancel: () => void; onSave: () => v
       >
         Cancelar
       </button>
-      <button
-        onClick={onSave}
-        className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all"
-        style={{ background: "#00F9E4", color: "#0A0A0A" }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "#33FFEE";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(0,249,228,0.3)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "#00F9E4";
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-        }}
-      >
-        <Save size={14} />
-        Salvar Alterações
-      </button>
+      <SavePrimaryButton preset="form" type="button" className="!text-sm px-6 py-2.5 font-bold normal-case uppercase" onClick={onSave}>
+        Salvar alterações
+      </SavePrimaryButton>
     </div>
   );
 }
@@ -302,10 +292,13 @@ function TabPerfilAdmin() {
 
 // ─── Tab: Planos ────────────────────────────────────────────────────────────────
 function TabPlanos() {
+  const { role } = useStaffSession();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  /** Plano sendo excluído no momento (id), ou null. */
+  const [excluindoPlanoId, setExcluindoPlanoId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [novoPlano, setNovoPlano] = useState({
     nome: "",
@@ -403,6 +396,35 @@ function TabPlanos() {
     setShowModal(false);
   };
 
+  const excluirPlano = async (planoId: string, nomePlano: string) => {
+    if (!isSupabaseConfigured) return;
+    const confirma = window.confirm(
+      `Excluir o plano "${nomePlano}"?\n\nAlunos que usarem este plano ficarão sem plano de catálogo.`,
+    );
+    if (!confirma) return;
+
+    setErro(null);
+    setExcluindoPlanoId(planoId);
+    const s = getSupabase();
+    const { error: upErr } = await s.from("alunos").update({ plano_id: null }).eq("plano_id", planoId);
+    if (upErr) {
+      setErro(upErr.message);
+      toast.error(upErr.message);
+      setExcluindoPlanoId(null);
+      return;
+    }
+    const { error: delErr } = await s.from("planos").delete().eq("id", planoId);
+    if (delErr) {
+      setErro(delErr.message);
+      toast.error(delErr.message);
+      setExcluindoPlanoId(null);
+      return;
+    }
+    toast.success(`Plano "${nomePlano}" excluído.`);
+    await carregar();
+    setExcluindoPlanoId(null);
+  };
+
   return (
     <>
       <div
@@ -452,8 +474,8 @@ function TabPlanos() {
               style={{ background: "#0D0D0D", border: `1px solid ${plano.cor}33` }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-3">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <span className="font-black tracking-widest text-sm" style={{ color: plano.cor, fontFamily: "Barlow Condensed, sans-serif" }}>
                     {plano.nome}
                   </span>
@@ -463,20 +485,48 @@ function TabPlanos() {
                       Destaque
                     </span>
                   )}
-                  <span className="text-xs" style={{ color: "#606060" }}>
+                  <span className="text-xs flex-1 min-w-0 break-words" style={{ color: "#606060" }}>
                     {plano.descricao}
                   </span>
                 </div>
-                {/* Price inline input */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
                   <DollarSign size={14} style={{ color: "#606060" }} />
                   <input
                     type="number"
                     value={plano.preco}
                     onChange={(e) => updatePreco(plano.id, e.target.value)}
-                    className="w-24 px-3 py-1.5 rounded-full text-sm text-right outline-none"
+                    disabled={!!excluindoPlanoId || salvando}
+                    className="w-24 px-3 py-1.5 rounded-full text-sm text-right outline-none disabled:opacity-50"
                     style={{ background: "#1A1A1A", border: "1px solid #303030", color: "#F2F2F2" }}
                   />
+                  {role === "super_admin" && (
+                    <button
+                      type="button"
+                      title="Remover este plano"
+                      aria-label={`Remover plano ${plano.nome}`}
+                      onClick={() => void excluirPlano(plano.id, plano.nome)}
+                      disabled={carregando || salvando || excluindoPlanoId !== null}
+                      className="p-2 rounded-full transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        color: "#F87171",
+                        border: "1px solid rgba(239, 68, 68, 0.35)",
+                        background: "rgba(239, 68, 68, 0.06)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (carregando || salvando || excluindoPlanoId !== null) return;
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.14)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(239, 68, 68, 0.06)";
+                      }}
+                    >
+                      {excluindoPlanoId === plano.id ? (
+                        <Loader2 size={14} className="animate-spin" aria-hidden />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -899,7 +949,7 @@ export function ConfiguracoesPage() {
         </motion.header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto min-w-0 px-4 md:px-6 py-6 pb-20 md:pb-6 box-border">
+        <main className="px-4 md:px-10 flex-1 overflow-y-auto min-w-0 py-6 pb-20 md:pb-6 box-border">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -919,36 +969,50 @@ export function ConfiguracoesPage() {
               </p>
             </div>
 
-            {/* Tabs */}
-            <div
-              className="flex items-end gap-1 pb-0"
-              style={{ borderBottom: "1px solid #1E1E1E" }}
-            >
+            {/* Tabs — aba ativa com o mesmo pill primário que "Salvar Alterações" */}
+            <div className="flex flex-wrap items-center gap-2 pb-3 border-b" style={{ borderColor: "#1E1E1E" }}>
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className="flex-1 flex items-center justify-center gap-1 md:gap-2 px-2 md:px-4 py-2.5 rounded-t-xl text-xs md:text-sm font-medium transition-all relative"
-                    style={{
-                      background: isActive ? "#00F9E4" : "transparent",
-                      color: isActive ? "#0A0A0A" : "#A8A8A8",
-                      fontWeight: isActive ? 700 : 400,
-                    }}
+                    className={`flex-1 flex min-w-0 shrink items-center justify-center gap-2 rounded-full text-sm px-4 md:px-6 py-2.5 transition-all ${
+                      isActive ? "font-bold" : "font-medium"
+                    }`}
+                    style={
+                      isActive
+                        ? { background: "#00F9E4", color: "#0A0A0A", border: "1px solid transparent" }
+                        : {
+                            border: "1px solid #303030",
+                            color: "#A8A8A8",
+                            background: "transparent",
+                          }
+                    }
                     onMouseEnter={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLButtonElement).style.color = "#F2F2F2";
+                      const b = e.currentTarget as HTMLButtonElement;
+                      if (isActive) {
+                        b.style.background = "#33FFEE";
+                        b.style.boxShadow = "0 0 20px rgba(0,249,228,0.3)";
+                      } else {
+                        b.style.background = "#1C1C1C";
+                        b.style.color = "#F2F2F2";
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!isActive) {
-                        (e.currentTarget as HTMLButtonElement).style.color = "#A8A8A8";
+                      const b = e.currentTarget as HTMLButtonElement;
+                      if (isActive) {
+                        b.style.background = "#00F9E4";
+                        b.style.boxShadow = "none";
+                      } else {
+                        b.style.background = "transparent";
+                        b.style.color = "#A8A8A8";
                       }
                     }}
                   >
-                    <tab.icon size={12} className="md:w-3.5 md:h-3.5" />
-                    <span className="whitespace-nowrap text-[10px] md:text-xs">{tab.label}</span>
+                    <tab.icon size={14} className="shrink-0" />
+                    <span className="whitespace-nowrap truncate">{tab.label}</span>
                   </button>
                 );
               })}

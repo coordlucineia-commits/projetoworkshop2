@@ -318,7 +318,7 @@ function Paragraph1() {
 function Button3() {
   return (
     <div className="absolute h-[19.993px] left-[117.94px] top-[30.49px] w-[204.115px]" data-name="Button">
-      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-[102.5px] not-italic text-[#606060] text-[14px] text-center top-[0.25px] whitespace-nowrap">← Voltar para área do membro</p>
+      <p className="-translate-x-1/2 absolute font-['Inter:Medium',sans-serif] font-medium leading-[20px] left-[102.5px] not-italic text-[#606060] text-[14px] text-center top-[0.25px] whitespace-nowrap">← Voltar para homepage</p>
     </div>
   );
 }

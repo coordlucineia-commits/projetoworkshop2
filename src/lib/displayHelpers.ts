@@ -76,6 +76,22 @@ export function formatDateTimeBr(iso: string | null | undefined): string {
   });
 }
 
+/** Data + horário em pt-BR, fuso São Paulo e sem segundos (evita divergências do TZ do navegador). */
+export function formatDateTimeBrSaoPaulo(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  }).format(d);
+}
+
 export function timeOnlyBr(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";

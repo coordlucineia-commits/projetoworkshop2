@@ -31,6 +31,78 @@ export function mapFormaPagamento(
   return FORMA_MAP[v] ?? null;
 }
 
+export type DuracaoContratoKey = "mensal" | "trimestral" | "semestral" | "anual";
+
+export const MESES_CONTRATO: Record<DuracaoContratoKey, number> = {
+  mensal: 1,
+  trimestral: 3,
+  semestral: 6,
+  anual: 12,
+};
+
+export const LABEL_DURACAO_CONTRATO: Record<DuracaoContratoKey, string> = {
+  mensal: "Mensal",
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
+};
+
+/** Fração aplicada sobre o subtotal (meses × mensalidade): mensal sem desconto; demais conforme combinado. */
+export const DESCONTO_CONTRATO: Record<DuracaoContratoKey, number> = {
+  mensal: 0,
+  trimestral: 0.1,
+  semestral: 0.15,
+  anual: 0.2,
+};
+
+export function multiplicadorAposDesconto(duracaoKey: DuracaoContratoKey): number {
+  return 1 - DESCONTO_CONTRATO[duracaoKey];
+}
+
+/** Subtotal sem desconto: meses × valor mensal. */
+export function subtotalContratoBruto(valorMes: number, dk: DuracaoContratoKey): number {
+  return valorMes * MESES_CONTRATO[dk];
+}
+
+/** Total a cobrar: subtotal menos desconto da duração. */
+export function valorTotalContratoLiquido(valorMes: number, dk: DuracaoContratoKey): number {
+  return Number((subtotalContratoBruto(valorMes, dk) * multiplicadorAposDesconto(dk)).toFixed(2));
+}
+
+export function textoResumoDesconto(dk: DuracaoContratoKey): string {
+  const d = DESCONTO_CONTRATO[dk];
+  if (d <= 0) return "Sem desconto sobre o pacote mensal.";
+  const pct = Math.round(d * 100);
+  return `${pct}% de desconto sobre o valor bruto (${LABEL_DURACAO_CONTRATO[dk]}).`;
+}
+
+/**
+ * Data de término = mesma rodada civil após acrescentar N meses (N = período contratado).
+ * Ex.: 2026-01-05 + mensal → 2026-02-05; + trimestral → 2026-04-05.
+ */
+export function dataTerminoPorDataInicioEDuracao(
+  isoStart: string | null | undefined,
+  dk: DuracaoContratoKey,
+): string | null {
+  if (!isoStart || isoStart.length < 10) return null;
+  const months = MESES_CONTRATO[dk];
+  const slice = isoStart.slice(0, 10).split("-");
+  const y = Number(slice[0]);
+  const m = Number(slice[1]);
+  const day = Number(slice[2]);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(day)) return null;
+  const dt = new Date(y, m - 1, day);
+  dt.setMonth(dt.getMonth() + months);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+/** Normaliza chave vindas das observações. */
+export function parseDuracaoContratoKey(raw: string | null | undefined): DuracaoContratoKey | "" {
+  const k = (raw ?? "").trim().toLowerCase();
+  if (k === "mensal" || k === "trimestral" || k === "semestral" || k === "anual") return k;
+  return "";
+}
+
 export function buildObservacoes(parts: {
   profissao: string;
   contatoEmergencia: string;
@@ -40,6 +112,10 @@ export function buildObservacoes(parts: {
   tempoPratica: string;
   vezesSemana: string;
   horarioPref: string;
+  /** Chave técnica: mensal | trimestral | semestral | anual */
+  duracaoContrato?: DuracaoContratoKey;
+  /** Nome do plano do catálogo (para observações quando houver vínculo) */
+  planoCatalogoNome?: string | null;
 }): string {
   const lines = [
     parts.profissao && `Profissão: ${parts.profissao}`,
@@ -50,6 +126,9 @@ export function buildObservacoes(parts: {
     parts.tempoPratica && `Tempo de prática: ${parts.tempoPratica}`,
     parts.vezesSemana && `Frequência desejada: ${parts.vezesSemana}`,
     parts.horarioPref && `Horário preferido: ${parts.horarioPref}`,
+    parts.planoCatalogoNome?.trim() && `Plano: ${parts.planoCatalogoNome.trim()}`,
+    parts.duracaoContrato &&
+      `Contrato: ${parts.duracaoContrato}`,
   ].filter(Boolean);
   return lines.join("\n");
 }
@@ -87,8 +166,9 @@ export function validateNovoAluno(input: {
   endereco: string;
   contatoEmergencia: string;
   telEmergencia: string;
-  tipoPlano: string;
-  valorPlano: string;
+  duracaoContrato: string;
+  /** Valor da mensalidade base (informado antes de aplicar meses). */
+  valorMensal: string;
   dataInicio: string;
   dataVenc: string;
   formaPagto: string;
@@ -107,8 +187,8 @@ export function validateNovoAluno(input: {
     ["Endereço", input.endereco],
     ["Contato de emergência", input.contatoEmergencia],
     ["Telefone de emergência", input.telEmergencia],
-    ["Tipo de plano", input.tipoPlano],
-    ["Valor do plano", input.valorPlano],
+    ["Duração do contrato", input.duracaoContrato],
+    ["Valor mensal base", input.valorMensal],
     ["Data de início", input.dataInicio],
     ["Data de vencimento", input.dataVenc],
     ["Forma de pagamento", input.formaPagto],
@@ -123,15 +203,102 @@ export function validateNovoAluno(input: {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errs.push("E-mail inválido.");
   }
-  const valor = parseMoneyBr(input.valorPlano);
-  if (valor === null || valor <= 0) {
-    errs.push("Valor do plano inválido.");
+  const valorMes = parseMoneyBr(input.valorMensal);
+  if (valorMes === null || valorMes <= 0) {
+    errs.push("Valor mensal inválido.");
   }
   const forma = mapFormaPagamento(input.formaPagto);
   if (!forma) errs.push("Forma de pagamento inválida.");
+  if (parseDuracaoContratoKey(input.duracaoContrato) === "") {
+    errs.push("Informe a duração do contrato (mensal a anual).");
+  }
   return errs;
 }
 
 export function randomPin4(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+/** Formata apenas dígitos do CPF para exibição no formulário (00.000.000-00). */
+export function formatCpfBr(digitsRaw: string): string {
+  const n = digitsRaw.replace(/\D/g, "").slice(0, 11);
+  return n
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+export type ParsedObservacoes = {
+  profissao: string;
+  contatoEmergencia: string;
+  telEmergencia: string;
+  objetivo: string;
+  jaTreinou: string;
+  tempoPratica: string;
+  vezesSemana: string;
+  horarioPref: string;
+  /** Chave Contrato: — para recalcular valor mensal ao editar */
+  duracaoContrato: DuracaoContratoKey | "";
+  /** Linha opcional Plano: no texto de observações */
+  planCatalogoNome: string;
+};
+
+const OBS_EMPTY: ParsedObservacoes = {
+  profissao: "",
+  contatoEmergencia: "",
+  telEmergencia: "",
+  objetivo: "",
+  jaTreinou: "",
+  tempoPratica: "",
+  vezesSemana: "",
+  horarioPref: "",
+  duracaoContrato: "",
+  planCatalogoNome: "",
+};
+
+/** Reverte `buildObservacoes` para preencher o cadastro na edição. */
+export function parseObservacoes(obs: string | null): ParsedObservacoes {
+  if (!obs?.trim()) return { ...OBS_EMPTY };
+  const out = { ...OBS_EMPTY };
+  for (const line of obs.split("\n")) {
+    const t = line.trim();
+    if (t.startsWith("Profissão: "))
+      out.profissao = t.slice("Profissão: ".length).trim();
+    else if (t.startsWith("Emergência: ")) {
+      const rest = t.slice("Emergência: ".length);
+      const sep = rest.indexOf(" — ");
+      if (sep >= 0) {
+        out.contatoEmergencia = rest.slice(0, sep).trim();
+        out.telEmergencia = rest.slice(sep + 3).trim();
+      } else {
+        out.contatoEmergencia = rest.trim();
+      }
+    } else if (t.startsWith("Objetivo principal: "))
+      out.objetivo = t.slice("Objetivo principal: ".length).trim();
+    else if (t.startsWith("Já treinou antes: "))
+      out.jaTreinou = t.slice("Já treinou antes: ".length).trim();
+    else if (t.startsWith("Tempo de prática: "))
+      out.tempoPratica = t.slice("Tempo de prática: ".length).trim();
+    else if (t.startsWith("Frequência desejada: "))
+      out.vezesSemana = t.slice("Frequência desejada: ".length).trim();
+    else if (t.startsWith("Horário preferido: "))
+      out.horarioPref = t.slice("Horário preferido: ".length).trim();
+    else if (t.startsWith("Plano: "))
+      out.planCatalogoNome = t.slice("Plano: ".length).trim();
+    else if (t.startsWith("Contrato: ")) {
+      const dk = parseDuracaoContratoKey(t.slice("Contrato: ".length));
+      if (dk) out.duracaoContrato = dk;
+    }
+  }
+  return out;
+}
+
+/** Normaliza JSON de anamnese/PAR-Q para strings no formulário. */
+export function jsonRecordToFormStrings(j: Json): Record<string, string> {
+  if (!j || typeof j !== "object" || Array.isArray(j)) return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(j as Record<string, unknown>)) {
+    out[k] = v == null ? "" : String(v);
+  }
+  return out;
 }

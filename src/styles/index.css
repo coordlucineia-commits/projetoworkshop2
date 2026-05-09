@@ -2,21 +2,76 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* Smooth scroll for in-page anchor links (nav → sections) */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Prevent horizontal scroll on all pages */
-html, body {
+html,
+body {
   overflow-x: hidden;
   max-width: 100%;
   margin: 0;
   padding: 0;
+  /* Ocultar barra vertical do documento; scroll por roda/teclado/trackpad mantido */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* Ensure all containers respect viewport width */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-/* Prevent overflow on main app container */
+/* Prevent overflow on main app container + sem barra lateral no root */
 #root {
   overflow-x: hidden;
   max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+#root * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+@supports selector(::-webkit-scrollbar) {
+  #root::-webkit-scrollbar,
+  #root *::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    display: none;
+  }
+}
+
+/* Área do aluno: impressão da ficha (Meu perfil) */
+@media print {
+  .aluno-app-shell > aside,
+  .aluno-app-shell > nav,
+  .aluno-no-print {
+    display: none !important;
+  }
+  .aluno-app-shell > main {
+    padding-bottom: 0 !important;
+    padding-inline: 0 !important;
+  }
+  .aluno-perfil-print-root {
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}
+

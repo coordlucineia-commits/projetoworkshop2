@@ -34,9 +34,13 @@ export function LandingPage() {
               onClick={() => navigate("/login")}
               className="px-5 py-2 text-sm border border-[#2A2A2A] hover:border-[#00F9E4] transition-colors rounded-full"
             >
-              SOU MEMBRO
+              LOGIN
             </button>
-            <button className="px-5 py-2 text-sm bg-[#00F9E4] text-[#0A0A0A] hover:bg-[#33FFEE] transition-colors rounded-full">
+            <button
+              type="button"
+              onClick={() => navigate("/agendar-visita")}
+              className="px-5 py-2 text-sm bg-[#00F9E4] text-[#0A0A0A] hover:bg-[#33FFEE] transition-colors rounded-full"
+            >
               AGENDAR VISITA
             </button>
           </div>
@@ -64,9 +68,13 @@ export function LandingPage() {
                 onClick={() => { navigate("/login"); setMenuOpen(false); }}
                 className="w-full py-2 text-sm border border-[#2A2A2A] rounded-full"
               >
-                SOU MEMBRO
+                LOGIN
               </button>
-              <button className="w-full py-2 text-sm bg-[#00F9E4] text-[#0A0A0A] rounded-full">
+              <button
+                type="button"
+                onClick={() => { navigate("/agendar-visita"); setMenuOpen(false); }}
+                className="w-full py-2 text-sm bg-[#00F9E4] text-[#0A0A0A] rounded-full"
+              >
                 AGENDAR VISITA
               </button>
             </div>
@@ -130,13 +138,26 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-12 md:mb-20"
+            className="flex flex-col sm:flex-row flex-wrap gap-3 md:gap-4 mb-12 md:mb-20"
           >
-            <button className="px-6 md:px-8 py-3 md:py-4 text-sm md:text-base bg-[#00F9E4] text-[#0A0A0A] hover:bg-[#33FFEE] transition-all hover:shadow-[0_0_30px_rgba(0,249,228,0.3)] rounded-full font-bold uppercase tracking-wider">
+            <a
+              href="#planos"
+              className="inline-flex justify-center px-6 md:px-8 py-3 md:py-4 text-sm md:text-base bg-[#00F9E4] text-[#0A0A0A] hover:bg-[#33FFEE] transition-all hover:shadow-[0_0_30px_rgba(0,249,228,0.3)] rounded-full font-bold uppercase tracking-wider"
+            >
               COMEÇAR AGORA
-            </button>
-            <button className="px-6 md:px-8 py-3 md:py-4 text-sm md:text-base border border-[#2A2A2A] hover:border-[#00F9E4] transition-colors rounded-full uppercase tracking-wider">
+            </a>
+            <a
+              href="#espaco"
+              className="inline-flex justify-center px-6 md:px-8 py-3 md:py-4 text-sm md:text-base border border-[#2A2A2A] hover:border-[#00F9E4] transition-colors rounded-full uppercase tracking-wider"
+            >
               CONHECER O ESPAÇO
+            </a>
+            <button
+              type="button"
+              onClick={() => navigate("/agendar-visita")}
+              className="px-6 md:px-8 py-3 md:py-4 text-sm md:text-base border border-[#2A2A2A] hover:border-[#00F9E4] hover:text-[#00F9E4] transition-colors rounded-full uppercase tracking-wider"
+            >
+              Agendar visita guiada
             </button>
           </motion.div>
 
@@ -369,7 +390,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {[
               { title: "LuTe STRENGTH", desc: "Musculação por periodização. Para iniciantes a avançados em hipertrofia.", frequency: "3 a 5× por semana", featured: false },
-              { title: "LuTe CONDITIONING", desc: "Sessões de 45 min de alta intensidade.", frequency: "Horários: 06H · 07H · 12H · 18H · 19H30", featured: true },
+              { title: "LuTe CONDITIONING", desc: "Sessões de 45 min de alta intensidade.", frequency: "Horários: 06H · 07H · 12H · 18H · 19H30", featured: false },
               { title: "LuTe MOBILITY", desc: "Foco em postura e prevenção de lesões para quem treina pesado.", frequency: "2× por semana", featured: false },
               { title: "PERSONAL TRAINING", desc: "Sessões 1:1 com avaliação completa e revisão mensal.", frequency: "Sob demanda", featured: false }
             ].map((program, i) => (
@@ -645,8 +666,11 @@ export function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="pt-8 border-t border-[#2A2A2A] text-center text-sm text-[#6B6B6B]">
+          <div className="pt-8 border-t border-[#2A2A2A] text-center text-sm text-[#6B6B6B] space-y-1">
             <p>© 2026 LuTe Academy. Todos os direitos reservados.</p>
+            <p style={{ fontSize: "11px", color: "#3A3A3A", fontFamily: "monospace", letterSpacing: "0.07em" }}>
+              desenvolvido por <span style={{ color: "#555555", fontWeight: 700 }}>Lucineia Tenorio</span>
+            </p>
           </div>
         </div>
       </footer>

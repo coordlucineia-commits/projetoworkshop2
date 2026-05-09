@@ -48,7 +48,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        <ChevronDownIcon className="size-4 shrink-0 text-primary" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -152,7 +152,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon className="size-4" />
+      <ChevronUpIcon className="size-4 shrink-0 text-primary" />
     </SelectPrimitive.ScrollUpButton>
   );
 }
@@ -170,7 +170,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ChevronDownIcon className="size-4" />
+      <ChevronDownIcon className="size-4 shrink-0 text-primary" />
     </SelectPrimitive.ScrollDownButton>
   );
 }

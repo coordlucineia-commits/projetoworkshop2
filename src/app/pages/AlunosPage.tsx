@@ -1,20 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
+import { useRequireAdmin } from "../hooks/useRequireAdmin";
+import { useStaffPermissionGuard } from "../hooks/useStaffPermissionGuard";
+import { useStaffSession } from "../context/StaffSessionContext";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { MobileBottomNav } from "../components/MobileBottomNav";
 import {
   Search,
   ChevronDown,
+  ChevronLeft,
   MoreVertical,
   Sun,
   UserPlus,
-  QrCode,
-  ChevronLeft,
   Edit2,
   Mail,
   Phone,
   Calendar,
+  Users,
 } from "lucide-react";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import {
@@ -26,6 +29,7 @@ import {
 } from "../../lib/displayHelpers";
 import type { Database } from "../../lib/database.types";
 import { AlunoAvatar } from "../components/AlunoAvatar";
+import { planTierLabel, planHasPersonalSessions } from "../../lib/planHelpers";
 
 interface Aluno {
   id: string;
@@ -34,6 +38,8 @@ interface Aluno {
   email: string;
   telefone: string;
   plano: string;
+  planoTier: string;
+  planoHasPersonal: boolean;
   statusFinanceiro: "Em dia" | "Vencendo" | "Em atraso";
   statusMatricula: "ATIVO" | "BLOQUEADO" | "INATIVO";
   dataCadastro: string;
@@ -41,6 +47,8 @@ interface Aluno {
   ultimoCheckin: string;
   totalCheckins: number;
   avatar: string | null;
+  professorAvaliacao: { id: string; nome: string } | null;
+  professorAcompanhamento: { id: string; nome: string } | null;
   pagamentos: {
     data: string;
     status: "Pago" | "Atrasado" | "Pendente" | "Cancelado";
@@ -52,13 +60,22 @@ interface Aluno {
 type PlanoRow = Database["public"]["Tables"]["planos"]["Row"];
 type AlunoRow = Database["public"]["Tables"]["alunos"]["Row"];
 type PagRow = Database["public"]["Tables"]["pagamentos"]["Row"];
+type ProfRef = { id: string; nome: string } | null;
+
+type AlunoRawRow = AlunoRow & {
+  planos: PlanoRow | null;
+  pagamentos: PagRow[] | null;
+  professor_avaliacao: ProfRef;
+  professor_acompanhamento: ProfRef;
+};
 
 function buildAlunoList(
-  rows: (AlunoRow & { planos: PlanoRow | null; pagamentos: PagRow[] | null })[],
+  rows: AlunoRawRow[],
   checkinMap: Map<string, { count: number; last: string | null }>,
 ): Aluno[] {
   return rows.map((row) => {
     const st = checkinMap.get(row.id) ?? { count: 0, last: null };
+    const planoNome = row.planos?.nome ?? null;
     const pags = (row.pagamentos ?? [])
       .slice()
       .sort(
@@ -81,7 +98,9 @@ function buildAlunoList(
         : `#${row.matricula}`,
       email: row.email,
       telefone: row.telefone ?? "—",
-      plano: row.planos?.nome?.toUpperCase() ?? "—",
+      plano: planoNome?.toUpperCase() ?? "—",
+      planoTier: planTierLabel(planoNome),
+      planoHasPersonal: planHasPersonalSessions(planoNome),
       statusFinanceiro: statusFinanceiroToLabel(row.status_financeiro),
       statusMatricula: row.status_matricula,
       dataCadastro: formatDateBr(row.created_at),
@@ -91,6 +110,8 @@ function buildAlunoList(
         : "Nenhum check-in",
       totalCheckins: st.count,
       avatar: row.foto,
+      professorAvaliacao: row.professor_avaliacao ?? null,
+      professorAcompanhamento: row.professor_acompanhamento ?? null,
       pagamentos: pags,
     };
   });
@@ -125,6 +146,10 @@ function getStatusColor(status: string) {
 
 export function AlunosPage() {
   const navigate = useNavigate();
+  const { ready, checking } = useRequireAdmin();
+  const permGuard = useStaffPermissionGuard("alunos");
+  const { role } = useStaffSession();
+
   const [view, setView] = useState<"lista" | "perfil">("lista");
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [busca, setBusca] = useState("");
@@ -142,9 +167,14 @@ export function AlunosPage() {
     setLoading(true);
     setLoadError(null);
     const supabase = getSupabase();
+    const selectStr =
+      role === "super_admin"
+        ? "*, planos(nome, preco), pagamentos(*), professor_avaliacao:professores!professor_avaliacao_id(id,nome), professor_acompanhamento:professores!professor_acompanhamento_id(id,nome)"
+        : "*, planos(nome, preco), professor_avaliacao:professores!professor_avaliacao_id(id,nome), professor_acompanhamento:professores!professor_acompanhamento_id(id,nome)";
+
     const { data: alunosRaw, error: e1 } = await supabase
       .from("alunos")
-      .select("*, planos(nome, preco), pagamentos(*)")
+      .select(selectStr)
       .order("created_at", { ascending: false });
     if (e1) {
       setLoadError(e1.message);
@@ -152,10 +182,7 @@ export function AlunosPage() {
       setLoading(false);
       return;
     }
-    const rows = (alunosRaw ?? []) as (AlunoRow & {
-      planos: PlanoRow | null;
-      pagamentos: PagRow[] | null;
-    })[];
+    const rows = (alunosRaw ?? []) as AlunoRawRow[];
     const ids = rows.map((r) => r.id);
     const checkinMap = new Map<string, { count: number; last: string | null }>();
     if (ids.length > 0) {
@@ -179,7 +206,7 @@ export function AlunosPage() {
     }
     setAlunos(buildAlunoList(rows, checkinMap));
     setLoading(false);
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     void carregar();
@@ -188,9 +215,9 @@ export function AlunosPage() {
   const alunosFiltrados = alunos.filter((aluno) => {
     const termo = busca.toLowerCase();
     return (
-      aluno.nome.toLowerCase().includes(termo) ||
-      aluno.email.toLowerCase().includes(termo) ||
-      aluno.telefone.toLowerCase().includes(termo)
+      (aluno.nome ?? "").toLowerCase().includes(termo) ||
+      (aluno.email ?? "").toLowerCase().includes(termo) ||
+      (aluno.telefone ?? "").toLowerCase().includes(termo)
     );
   });
 
@@ -204,11 +231,19 @@ export function AlunosPage() {
     setAlunoSelecionado(null);
   };
 
+  if (checking || permGuard.checking || !ready) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#0A0A0A] text-[#00F9E4]" style={{ fontFamily: "monospace", fontSize: 12 }}>
+        Verificando acesso...
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen overflow-x-hidden" style={{ background: "#0A0A0A", maxWidth: "100%", width: "100%" }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: "#0A0A0A", maxWidth: "100%", width: "100%" }}>
       <AdminSidebar />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <motion.header
           initial={{ y: -20, opacity: 0 }}
@@ -296,28 +331,11 @@ export function AlunosPage() {
             >
               <UserPlus size={16} />
             </button>
-
-            <button
-              onClick={() => navigate("/recepcao")}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider sm:tracking-widest transition-all whitespace-nowrap"
-              style={{ background: "#00F9E4", color: "#0A0A0A" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 30px rgba(0, 249, 228, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-              }}
-            >
-              <QrCode size={14} />
-              <span className="hidden sm:inline">Ativar Recepção</span>
-              <span className="sm:hidden">Recepção</span>
-            </button>
           </div>
         </motion.header>
 
         {/* Content */}
-        <main className="flex-1 px-4 md:px-8 py-6 pb-20 md:pb-6">
+        <main className="px-4 md:px-10 flex-1 overflow-y-auto py-6 pb-20 md:pb-6">
           <AnimatePresence mode="wait">
             {view === "lista" ? (
               <motion.div
@@ -375,7 +393,7 @@ export function AlunosPage() {
                       }}
                     >
                       Planos
-                      <ChevronDown size={14} className="md:w-4 md:h-4" />
+                      <ChevronDown size={14} className="md:w-4 md:h-4 shrink-0 text-primary" />
                     </button>
 
                     <button
@@ -387,7 +405,7 @@ export function AlunosPage() {
                       }}
                     >
                       Mês
-                      <ChevronDown size={14} className="md:w-4 md:h-4" />
+                      <ChevronDown size={14} className="md:w-4 md:h-4 shrink-0 text-primary" />
                     </button>
 
                     <button
@@ -399,7 +417,7 @@ export function AlunosPage() {
                       }}
                     >
                       Recentes
-                      <ChevronDown size={14} className="md:w-4 md:h-4" />
+                      <ChevronDown size={14} className="md:w-4 md:h-4 shrink-0 text-primary" />
                     </button>
                   </div>
                 </div>
@@ -582,7 +600,7 @@ export function AlunosPage() {
                           "#A8A8A8")
                       }
                     >
-                      <ChevronLeft size={18} />
+                      <ChevronLeft size={18} className="shrink-0 text-primary" />
                       Voltar para lista
                     </button>
 
@@ -662,11 +680,17 @@ export function AlunosPage() {
                           </button>
 
                           <button
+                            type="button"
                             className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                             style={{
                               background: "transparent",
                               color: "#606060",
                             }}
+                            title="Editar cadastro do aluno"
+                            aria-label="Editar cadastro do aluno"
+                            onClick={() =>
+                              navigate(`/cadastro/editar/${alunoSelecionado.id}`)
+                            }
                             onMouseEnter={(e) => {
                               (e.currentTarget as HTMLButtonElement).style.background =
                                 "#2A2A2A";
@@ -808,7 +832,148 @@ export function AlunosPage() {
                       </div>
                     </div>
 
-                    {/* Histórico de pagamentos */}
+                    {/* Responsáveis */}
+                    <div
+                      className="p-6 rounded-2xl mb-6"
+                      style={{
+                        background: "#0D0D0D",
+                        border: "1px solid #303030",
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <Users size={16} style={{ color: "#606060" }} />
+                        <h3
+                          className="font-black text-lg uppercase tracking-tight"
+                          style={{ color: "#F2F2F2" }}
+                        >
+                          Responsáveis
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Plano tier */}
+                        <div
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: "#1A1A1A",
+                            border: "1px solid #303030",
+                          }}
+                        >
+                          <span
+                            className="text-xs uppercase tracking-widest block mb-2"
+                            style={{ color: "#606060" }}
+                          >
+                            Plano
+                          </span>
+                          <p
+                            className="text-sm font-bold"
+                            style={{ color: "#00F9E4" }}
+                          >
+                            {alunoSelecionado.planoTier}
+                          </p>
+                        </div>
+
+                        {/* Professor de Avaliação */}
+                        <div
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: "#1A1A1A",
+                            border: "1px solid #303030",
+                          }}
+                        >
+                          <span
+                            className="text-xs uppercase tracking-widest block mb-2"
+                            style={{ color: "#606060" }}
+                          >
+                            Prof. de Avaliação
+                          </span>
+                          {alunoSelecionado.professorAvaliacao ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  `/professores/${alunoSelecionado.professorAvaliacao!.id}`,
+                                )
+                              }
+                              className="text-sm font-semibold text-left transition-colors"
+                              style={{ color: "#F2F2F2" }}
+                              onMouseEnter={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.color =
+                                  "#00F9E4";
+                              }}
+                              onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.color =
+                                  "#F2F2F2";
+                              }}
+                            >
+                              {alunoSelecionado.professorAvaliacao.nome}
+                            </button>
+                          ) : (
+                            <p className="text-sm" style={{ color: "#606060" }}>
+                              —
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Personal de Acompanhamento (apenas Plus/Elite) */}
+                        <div
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: "#1A1A1A",
+                            border: "1px solid #303030",
+                          }}
+                        >
+                          <span
+                            className="text-xs uppercase tracking-widest block mb-2"
+                            style={{ color: "#606060" }}
+                          >
+                            Personal de Acomp.
+                          </span>
+                          {alunoSelecionado.planoHasPersonal ? (
+                            alunoSelecionado.professorAcompanhamento ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/professores/${alunoSelecionado.professorAcompanhamento!.id}`,
+                                  )
+                                }
+                                className="text-sm font-semibold text-left transition-colors"
+                                style={{ color: "#F2F2F2" }}
+                                onMouseEnter={(e) => {
+                                  (
+                                    e.currentTarget as HTMLButtonElement
+                                  ).style.color = "#00F9E4";
+                                }}
+                                onMouseLeave={(e) => {
+                                  (
+                                    e.currentTarget as HTMLButtonElement
+                                  ).style.color = "#F2F2F2";
+                                }}
+                              >
+                                {alunoSelecionado.professorAcompanhamento.nome}
+                              </button>
+                            ) : (
+                              <p
+                                className="text-sm"
+                                style={{ color: "#606060" }}
+                              >
+                                Não atribuído
+                              </p>
+                            )
+                          ) : (
+                            <p
+                              className="text-xs italic"
+                              style={{ color: "#444" }}
+                            >
+                              Disponível no plano Plus/Elite
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {role === "super_admin" && (
                     <div
                       className="p-6 rounded-2xl"
                       style={{
@@ -873,6 +1038,7 @@ export function AlunosPage() {
                         ))}
                       </div>
                     </div>
+                    )}
                   </>
                 )}
               </motion.div>

@@ -133,7 +133,8 @@
   button {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
-    border-radius: 50px!important;
+    /* Permitir sobrescritas via classes utilitárias (ex.: cards com rounded-[8px]) */
+    border-radius: 50px;
     line-height: 1.5;
   }
 
@@ -141,6 +142,19 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
-    border-radius: 50px!important;
+    border-radius: 50px;
   }
+}
+
+.elemento {
+  /* IE e Edge */
+  -ms-overflow-style: none;
+  /* Firefox */
+  scrollbar-width: none;
+  /* Safari, Chrome, Opera */
+  overflow: -moz-scrollbars-none; /* Antigo Firefox */
+}
+
+.elemento::-webkit-scrollbar {
+  display: none; /* Safari, Chrome, Opera */
 }
