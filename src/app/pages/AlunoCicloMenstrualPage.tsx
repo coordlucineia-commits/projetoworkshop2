@@ -129,34 +129,76 @@ function TabelaCicloReadOnly({
           Nenhum registro.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm min-w-[480px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider" style={{ color: "#6B6B6B" }}>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Dias menstruais</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Dias de ciclo</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Última menstruação (DUM)</th>
-                {mostrarColRegistradoEm ? (
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Registrado em</th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody style={{ color: "#E8E8E8" }}>
-              {linhas.map((row) => (
-                <tr key={row.id} className="border-t border-[#1E1E1E]">
-                  <td className="px-4 py-3 whitespace-nowrap align-top">{row.dias_menstruais}</td>
-                  <td className="px-4 py-3 whitespace-nowrap align-top">{row.dias_ciclo}</td>
-                  <td className="px-4 py-3 whitespace-nowrap align-top">
+        <>
+          <div className="sm:hidden divide-y divide-[#1E1E1E]">
+            {linhas.map((row) => (
+              <div key={row.id} className="px-5 py-4 space-y-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="text-[11px] uppercase tracking-wider shrink-0" style={{ color: "#6B6B6B" }}>
+                    Dias menstruais
+                  </span>
+                  <span className="text-right tabular-nums" style={{ color: "#E8E8E8" }}>
+                    {row.dias_menstruais}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[11px] uppercase tracking-wider shrink-0" style={{ color: "#6B6B6B" }}>
+                    Dias de ciclo
+                  </span>
+                  <span className="text-right tabular-nums" style={{ color: "#E8E8E8" }}>
+                    {row.dias_ciclo}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[11px] uppercase tracking-wider shrink-0 max-w-[45%]" style={{ color: "#6B6B6B" }}>
+                    Última menstruação (DUM)
+                  </span>
+                  <span className="text-right min-w-0 break-words" style={{ color: "#E8E8E8" }}>
                     {formatIsoParaDataBrasil(isoYmdSomente(String(row.data_ultima_menstruacao)))}
-                  </td>
+                  </span>
+                </div>
+                {mostrarColRegistradoEm ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-[11px] uppercase tracking-wider shrink-0 max-w-[45%]" style={{ color: "#6B6B6B" }}>
+                      Registrado em
+                    </span>
+                    <span className="text-right text-xs min-w-0 break-words" style={{ color: "#E8E8E8" }}>
+                      {formatoRegistroEm(row.registrado_em)}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm min-w-[480px]">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wider" style={{ color: "#6B6B6B" }}>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Dias menstruais</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Dias de ciclo</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Última menstruação (DUM)</th>
                   {mostrarColRegistradoEm ? (
-                    <td className="px-4 py-3 whitespace-nowrap align-top">{formatoRegistroEm(row.registrado_em)}</td>
+                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Registrado em</th>
                   ) : null}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody style={{ color: "#E8E8E8" }}>
+                {linhas.map((row) => (
+                  <tr key={row.id} className="border-t border-[#1E1E1E]">
+                    <td className="px-4 py-3 whitespace-nowrap align-top">{row.dias_menstruais}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">{row.dias_ciclo}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">
+                      {formatIsoParaDataBrasil(isoYmdSomente(String(row.data_ultima_menstruacao)))}
+                    </td>
+                    {mostrarColRegistradoEm ? (
+                      <td className="px-4 py-3 whitespace-nowrap align-top">{formatoRegistroEm(row.registrado_em)}</td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -370,7 +412,7 @@ export function AlunoCicloMenstrualPage() {
           {!loading && !novoCicloAberto ? (
             <button
               type="button"
-              className="self-start inline-flex items-center gap-2 rounded-xl border border-[#2A2A2A] px-4 py-3 text-sm font-bold transition-colors hover:bg-[#161616]"
+              className="self-start inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] px-5 py-3 text-sm font-bold transition-colors hover:bg-[#161616]"
               style={{ color: "#00F9E4" }}
               onClick={abrirNovoCiclo}
             >

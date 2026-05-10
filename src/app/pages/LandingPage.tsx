@@ -57,23 +57,36 @@ export function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:hidden border-t border-[#2A2A2A] bg-[#121212] px-6 py-6 space-y-4"
+            className="md:hidden border-t border-[#2A2A2A] bg-[#121212] px-6 py-6"
           >
-            <a href="#espaco" className="block text-sm text-[#9A9A9A]" onClick={() => setMenuOpen(false)}>Espaço</a>
-            <a href="#programas" className="block text-sm text-[#9A9A9A]" onClick={() => setMenuOpen(false)}>Programas</a>
-            <a href="#equipe" className="block text-sm text-[#9A9A9A]" onClick={() => setMenuOpen(false)}>Equipe</a>
-            <a href="#planos" className="block text-sm text-[#9A9A9A]" onClick={() => setMenuOpen(false)}>Planos</a>
-            <div className="flex flex-col gap-3 pt-4">
+            {(
+              [
+                ["#espaco", "Espaço"],
+                ["#programas", "Programas"],
+                ["#equipe", "Equipe"],
+                ["#planos", "Planos"],
+              ] as const
+            ).map(([href, label], idx) => (
+              <a
+                key={href}
+                href={href}
+                className={`block text-xl text-[#9A9A9A] text-center pt-5 pb-6 hover:text-[#00F9E4] transition-colors${idx < 3 ? " border-b border-[#2A2A2A]" : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </a>
+            ))}
+            <div className="flex flex-col gap-3 pt-6 border-t border-[#2A2A2A]">
               <button
                 onClick={() => { navigate("/login"); setMenuOpen(false); }}
-                className="w-full py-2 text-sm border border-[#2A2A2A] rounded-full"
+                className="w-full py-4 text-sm border border-[#2A2A2A] rounded-full"
               >
                 LOGIN
               </button>
               <button
                 type="button"
                 onClick={() => { navigate("/agendar-visita"); setMenuOpen(false); }}
-                className="w-full py-2 text-sm bg-[#00F9E4] text-[#0A0A0A] rounded-full"
+                className="w-full py-4 text-sm bg-[#00F9E4] text-[#0A0A0A] rounded-full"
               >
                 AGENDAR VISITA
               </button>
@@ -83,7 +96,7 @@ export function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 px-3 md:px-6 min-h-screen flex items-center">
+      <section className="relative pt-24 pb-16 px-6 md:px-6 min-h-screen flex items-center">
         <div className="absolute inset-0 overflow-hidden">
           <video
             autoPlay
@@ -117,7 +130,7 @@ export function LandingPage() {
             transition={{ delay: 0.3 }}
             className="space-y-4 mb-8"
           >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.9] uppercase">
+            <h1 className="text-[42px] md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.9] uppercase">
               SEM MÁGICA<br />
               SEM ATALHOS<br />
               SEM <span className="text-[#00F9E4]">DESCULPAS</span>
@@ -179,7 +192,7 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 + i * 0.1 }}
-                className="space-y-3"
+                className="space-y-3 flex flex-col items-center text-center md:items-start md:text-left"
               >
                 <item.icon className="w-6 h-6 text-[#00F9E4]" />
                 <div className="text-xs text-[#9A9A9A]">{item.label}</div>
@@ -191,7 +204,7 @@ export function LandingPage() {
       </section>
 
       {/* Quem Somos */}
-      <section id="espaco" className="py-16 md:py-24 px-3 md:px-6 bg-[#121212]">
+      <section id="espaco" className="py-16 md:py-24 px-6 md:px-6 bg-[#121212]">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -199,18 +212,18 @@ export function LandingPage() {
             viewport={{ once: true }}
             className="mb-12 md:mb-16"
           >
-            <h2 className="text-3xl md:text-4xl lg:text-6xl font-bold mb-6 md:mb-8 uppercase">
+            <h2 className="text-[42px] md:text-4xl lg:text-6xl font-bold mb-6 md:mb-8 uppercase text-center md:text-left leading-tight">
               FORJADOS PELA <span className="text-[#00F9E4]">DISCIPLINA.</span>
             </h2>
-            <p className="text-[#CFCFCF] max-w-3xl mb-6 md:mb-8 text-base md:text-lg leading-relaxed">
+            <p className="text-[#CFCFCF] max-w-3xl mb-6 md:mb-8 text-base md:text-lg leading-relaxed text-center md:text-left mx-auto md:mx-0">
               A LuTe nasceu de uma certeza simples: ambiente mediano produz resultado mediano.
               Cada metro quadrado foi pensado para que o espaço não interfira — ele desaparece.
               O que fica é o treino, a concentração e o progresso.
             </p>
-            <p className="text-[#9A9A9A] italic mb-6 md:mb-8 text-base md:text-lg">
+            <p className="text-[#9A9A9A] italic mb-6 md:mb-8 text-base md:text-lg text-center md:text-left">
               "In silence, the transformation begins."
             </p>
-            <p className="text-[#CFCFCF] text-sm md:text-base max-w-3xl leading-relaxed">
+            <p className="text-[#CFCFCF] text-sm md:text-base max-w-3xl leading-relaxed text-center md:text-left mx-auto md:mx-0">
               Aqui não tem música forçada, espelho em excesso ou coach em cima. Tem equipamento que não decepciona
               no seu melhor dia, profissionais que aparecem quando você precisa e silêncio o suficiente para se ouvir.
             </p>
@@ -261,13 +274,13 @@ export function LandingPage() {
       </section>
 
       {/* Depoimentos */}
-      <section className="py-16 md:py-24 px-3 md:px-6 bg-[#0A0A0A]">
+      <section className="py-16 md:py-24 px-6 md:px-6 bg-[#0A0A0A]">
         <div className="max-w-7xl mx-auto">
           <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold mb-16 uppercase"
+            className="text-3xl md:text-5xl font-bold mb-16 uppercase text-center md:text-left"
           >
             O QUE <span className="text-[#00F9E4]">DIZEM</span>
           </motion.h2>
@@ -298,7 +311,7 @@ export function LandingPage() {
       </section>
 
       {/* Estrutura */}
-      <section className="py-16 md:py-20 px-3 md:px-12 lg:px-20 bg-[#0A0A0A]">
+      <section className="py-16 md:py-20 px-6 md:px-12 lg:px-20 bg-[#0A0A0A]">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16">
             <motion.div
@@ -310,10 +323,10 @@ export function LandingPage() {
                 <span className="w-2 h-2 bg-[#00e5cc] rounded-full" />
                 <span className="text-white text-[11px] uppercase tracking-widest">ESTRUTURA</span>
               </div>
-              <h2 className="text-5xl lg:text-6xl font-black uppercase leading-none mb-4 text-white">
+              <h2 className="text-[42px] lg:text-6xl font-black uppercase leading-none mb-4 text-white text-center md:text-left tracking-tight">
                 EQUIPAMENTO QUE NÃO TE LIMITA.
               </h2>
-              <p className="text-[#aaaaaa] text-sm mb-8 leading-relaxed">
+              <p className="text-[#aaaaaa] text-sm mb-8 leading-relaxed text-center md:text-left">
                 Cada peça selecionada com um critério: aguentar seu melhor dia — todos os dias.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-3">
@@ -376,13 +389,13 @@ export function LandingPage() {
       </section>
 
       {/* Programas */}
-      <section id="programas" className="py-16 md:py-24 px-3 md:px-6 bg-[#0A0A0A]">
+      <section id="programas" className="py-16 md:py-24 px-6 md:px-6 bg-[#0A0A0A]">
         <div className="max-w-7xl mx-auto">
           <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-4xl lg:text-6xl font-bold mb-12 md:mb-16 uppercase"
+            className="text-3xl md:text-4xl lg:text-6xl font-bold mb-12 md:mb-16 uppercase text-center md:text-left"
           >
             UM PROTOCOLO PARA CADA <span className="text-[#00F9E4]">OBJETIVO.</span>
           </motion.h2>
@@ -412,7 +425,7 @@ export function LandingPage() {
       </section>
 
       {/* Planos */}
-      <section id="planos" className="py-16 md:py-24 px-3 md:px-6 bg-[#121212]">
+      <section id="planos" className="py-16 md:py-24 px-6 md:px-6 bg-[#121212]">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -420,10 +433,10 @@ export function LandingPage() {
             viewport={{ once: true }}
             className="mb-12 md:mb-16"
           >
-            <h2 className="text-3xl md:text-4xl lg:text-6xl font-bold mb-4 uppercase">
+            <h2 className="text-[42px] md:text-4xl lg:text-6xl font-bold mb-4 uppercase text-center md:text-left leading-tight tracking-tight">
               SEM MATRÍCULA. SEM FIDELIDADE. <span className="text-[#00F9E4]">SEM ENROLAÇÃO.</span>
             </h2>
-            <p className="text-[#9A9A9A] text-lg">Mude de plano quando quiser. Cancele com 30 dias.</p>
+            <p className="text-[#9A9A9A] text-lg text-center md:text-left">Mude de plano quando quiser. Cancele com 30 dias.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
@@ -473,8 +486,8 @@ export function LandingPage() {
       </section>
 
       {/* Equipe */}
-      <section id="equipe" className="py-16 md:py-20 px-3 md:px-12 lg:px-20 bg-[#0A0A0A]">
-        <div className="max-w-7xl mx-auto">
+      <section id="equipe" className="py-16 md:py-20 px-6 md:px-12 lg:px-20 bg-[#0A0A0A]">
+        <div className="max-w-7xl mx-auto flex flex-col items-center md:items-start">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -489,7 +502,7 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl md:text-5xl lg:text-6xl font-black uppercase leading-none mb-4 text-white"
+            className="text-[42px] md:text-5xl lg:text-6xl font-black uppercase leading-none mb-4 text-white text-center md:text-left"
           >
             COACHES QUE TREINAM.
           </motion.h2>
@@ -498,12 +511,12 @@ export function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-[#aaaaaa] text-sm max-w-[420px] mb-12 leading-relaxed"
+            className="text-[#aaaaaa] text-sm max-w-[420px] mb-12 leading-relaxed text-center md:text-left mx-auto md:mx-0"
           >
             A teoria é fundamental, mas o respeito é conquistado na prática. Nossa equipe vive o que ensina.
           </motion.p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
             {[
               { name: "RODRIGO FARIAS", role: "HEAD COACH", image: "https://images.unsplash.com/photo-1758875569897-5e214ccc4e17?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
               { name: "ANA LUÍSA", role: "CONDITIONING", image: "https://images.unsplash.com/photo-1618168220187-ef594ca55286?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
@@ -537,13 +550,13 @@ export function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 md:py-24 px-3 md:px-6 bg-[#121212]">
+      <section className="py-16 md:py-24 px-6 md:px-6 bg-[#121212]">
         <div className="max-w-4xl mx-auto">
           <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 md:mb-16 uppercase"
+            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 md:mb-16 uppercase text-center md:text-left"
           >
             PERGUNTAS <span className="text-[#00F9E4]">DIRETAS</span>
           </motion.h2>
@@ -572,13 +585,13 @@ export function LandingPage() {
       </section>
 
       {/* Localização */}
-      <section className="py-16 md:py-24 px-3 md:px-6 bg-[#0A0A0A]">
+      <section className="py-16 md:py-24 px-6 md:px-6 bg-[#0A0A0A]">
         <div className="max-w-7xl mx-auto">
           <motion.h2
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 md:mb-16 uppercase"
+            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-12 md:mb-16 uppercase text-center md:text-left"
           >
             ONDE ESTAMOS
           </motion.h2>
@@ -614,7 +627,7 @@ export function LandingPage() {
       </section>
 
       {/* CTA Final */}
-      <section className="py-20 md:py-32 px-3 md:px-6 bg-[#00F9E4] text-[#0A0A0A]">
+      <section className="py-20 md:py-32 px-6 md:px-6 bg-[#00F9E4] text-[#0A0A0A]">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2
             initial={{ opacity: 0, y: 30 }}
@@ -638,7 +651,7 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 md:py-16 px-3 md:px-6 bg-[#0A0A0A] border-t border-[#2A2A2A]">
+      <footer className="py-12 md:py-16 px-6 md:px-6 bg-[#0A0A0A] border-t border-[#2A2A2A]">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-8 md:mb-12">
             <div>

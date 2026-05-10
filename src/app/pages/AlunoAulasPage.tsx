@@ -273,11 +273,11 @@ export function AlunoAulasPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-[#303030] bg-transparent text-[#AAA] uppercase text-xs font-bold">
+            <AlertDialogCancel className="border-[#303030] bg-transparent font-bold text-[#AAA] uppercase text-xs rounded-full px-6">
               Voltar
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#00F9E4] text-[#0A0A0A] uppercase font-bold text-xs hover:opacity-90"
+              className="rounded-full px-6 bg-[#00F9E4] font-bold text-[#0A0A0A] uppercase text-xs hover:opacity-90"
               onClick={() => void confirmarListaEspera()}
             >
               Entrar na lista
@@ -302,11 +302,11 @@ export function AlunoAulasPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-[#303030] bg-transparent text-[#AAA] uppercase text-xs font-bold">
+            <AlertDialogCancel className="border-[#303030] bg-transparent font-bold text-[#AAA] uppercase text-xs rounded-full px-6">
               Manter
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#EF4444] text-white uppercase font-bold text-xs hover:opacity-90"
+              className="rounded-full px-6 bg-[#EF4444] font-bold text-white uppercase text-xs hover:opacity-90"
               onClick={() => void execCancel()}
             >
               Sim, cancelar
@@ -382,18 +382,24 @@ function AulaCard({
       {inscribed || waitlisted ? (
         <button
           type="button"
-          className="text-xs font-bold underline self-start"
-          style={{ color: "#F87171" }}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-full text-sm uppercase transition-colors shrink-0 self-start hover:opacity-90 disabled:opacity-40"
+          style={{
+            background: "#DC2626",
+            color: "#FAFAFA",
+            fontWeight: 700,
+            border: "none",
+            cursor: "pointer",
+          }}
           disabled={!inscricaoId || !onAskCancel}
           onClick={() => onAskCancel?.()}
         >
-          Cancelar inscrição
+          Cancelar
         </button>
       ) : (
         <button
           type="button"
           onClick={onJoin}
-          className="px-8 py-3 rounded-full disabled:opacity-40 font-black text-xs uppercase"
+          className="px-6 min-h-[44px] md:min-h-0 inline-flex items-center justify-center rounded-full disabled:opacity-40 font-black text-xs uppercase"
           style={{ background: "#00F9E4", color: "#0A0A0A" }}
         >
           Participar

@@ -246,7 +246,7 @@ export function ProfessorPerfilPage() {
   }
 
   return (
-    <div className="px-4 md:px-8 py-6 pb-24 md:pb-8 w-full min-w-0">
+    <div className="px-0 md:px-8 py-6 pb-24 md:pb-8 w-full min-w-0">
 
       {/* ── Card principal (mesmo layout de ProfessorPublicPage) ── */}
       <motion.div

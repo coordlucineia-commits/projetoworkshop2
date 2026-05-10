@@ -60,34 +60,44 @@ export function AlunoExerciciosPage() {
           </button>
         ))}
       </div>
-      <div className="space-y-4 w-full max-w-full">
+      <div className="grid sm:grid-cols-2 gap-4 w-full">
         {shown.map((e) => (
-          <ExerciseCard key={e.id} x={e} />
+          <ExerciseGridCard key={e.id} x={e} />
         ))}
       </div>
     </div>
   );
 }
 
-function ExerciseCard({ x }: { x: Ex }) {
+function ExerciseGridCard({ x }: { x: Ex }) {
   const [open, setOpen] = useState(false);
+  const r = 8;
   return (
-    <div className="rounded-2xl border border-[#2A2A2A] overflow-hidden" style={{ background: "#141414" }}>
-      <button type="button" className="w-full flex gap-4 p-4 text-left" onClick={() => setOpen(!open)}>
-        <img src={x.imagem_url} alt="" className="w-24 h-24 rounded-xl object-cover shrink-0" />
-        <div>
-          <p className="font-bold">{x.nome}</p>
-          <p className="text-xs mt-2" style={{ color: "#6B6B6B" }}>
+    <div
+      className="text-left overflow-hidden border border-[#2A2A2A] hover:border-[#00F9E4] transition-colors w-full min-w-0"
+      style={{ background: "#121212", borderRadius: r, overflow: "hidden" }}
+    >
+      <button type="button" className="w-full text-left" onClick={() => setOpen(!open)}>
+        <img
+          src={x.imagem_url}
+          alt=""
+          className="w-full h-36 object-cover block"
+          style={{ borderTopLeftRadius: r, borderTopRightRadius: r }}
+        />
+        <div className="p-4">
+          <p className="font-bold text-sm mb-2">{x.nome}</p>
+          <p className="text-[11px]" style={{ color: "#666" }}>
             {LABEL_GRUPO[x.grupo_muscular] ?? x.grupo_muscular} · {x.equipamento}
           </p>
         </div>
       </button>
-      {open && (
-        <div className="px-4 pb-4 pt-1 text-sm space-y-2 border-t border-[#2A2A2A]" style={{ color: "#AAA" }}>
+      {open ? (
+        <div className="px-4 pb-4 pt-2 text-sm space-y-2 border-t border-[#2A2A2A]" style={{ color: "#AAA" }}>
           <p>{x.descricao_execucao}</p>
           <p style={{ color: "#F59E0B" }}>Segurança: {x.dicas_seguranca}</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
+

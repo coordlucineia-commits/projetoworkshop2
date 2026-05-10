@@ -337,7 +337,7 @@ export function AlunoPerfilPage() {
   const parqTemSim = Boolean(aluno.parq_has_sim);
 
   return (
-    <div className="mx-auto max-w-3xl w-full px-4 md:px-10 box-border aluno-perfil-print-root py-6 pb-24 md:pb-8 min-w-0">
+    <div className="mx-auto max-w-3xl w-full px-0 md:px-10 box-border aluno-perfil-print-root py-6 pb-24 md:pb-8 min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="font-black text-2xl md:text-3xl tracking-tight" style={{ color: "#F2F2F2" }}>

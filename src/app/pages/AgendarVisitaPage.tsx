@@ -264,18 +264,6 @@ export function AgendarVisitaPage() {
 
   return (
     <LuTeGuestFormShell>
-      <button
-        type="button"
-        onClick={() => navigate("/")}
-        className="mb-6 text-sm flex items-center gap-2 font-mono uppercase tracking-wider transition-colors w-full justify-center sm:justify-start"
-        style={{ color: "#606060", background: "none", border: "none", cursor: "pointer" }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#00F9E4")}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#606060")}
-      >
-        <ArrowLeft size={15} />
-        Voltar
-      </button>
-
       {formHeader}
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -432,6 +420,20 @@ export function AgendarVisitaPage() {
           {submitting ? "Enviando…" : "Agendar minha visita"}
         </motion.button>
       </form>
+
+      <div className="mt-7 space-y-4">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="w-full text-sm flex items-center justify-center gap-2 transition-colors"
+          style={{ color: "#606060", background: "none", border: "none", cursor: "pointer" }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#F5F5F5")}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#606060")}
+        >
+          <ArrowLeft size={15} className="shrink-0 text-primary" />
+          Voltar para homepage
+        </button>
+      </div>
 
       <LuTeGuestFooterCredits />
     </LuTeGuestFormShell>

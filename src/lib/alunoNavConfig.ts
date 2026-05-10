@@ -45,7 +45,7 @@ const RAW_ALUNO_NAV_ITEMS: AlunoNavItem[] = [
     path: "/aluno/perfil",
     label: "Meu Perfil",
     icon: UserCircle,
-    navShortLabel: "Perfil",
+    navShortLabel: "Meu perfil",
     hint: "Cadastro e senha",
   },
   {

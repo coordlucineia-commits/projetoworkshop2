@@ -574,7 +574,7 @@ export function AdminExerciciosPage() {
           <AlertDialogFooter className="gap-2 sm:gap-2 sm:justify-end flex-col-reverse sm:flex-row">
             <AlertDialogCancel
               disabled={excluindo}
-              className="mt-0 border-[#303030] bg-[#1C1C1C] text-[#E5E5E5] hover:bg-[#2A2A2A] hover:text-white"
+              className="mt-0 rounded-full border-[#303030] bg-[#1C1C1C] text-[#E5E5E5] hover:bg-[#2A2A2A] hover:text-white"
             >
               Não
             </AlertDialogCancel>
@@ -582,7 +582,7 @@ export function AdminExerciciosPage() {
               type="button"
               disabled={excluindo}
               onClick={() => void confirmarExclusaoExercicio()}
-              className="inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-bold transition-colors disabled:opacity-50"
+              className="inline-flex min-h-[42px] items-center justify-center rounded-full px-6 py-2.5 text-sm font-bold uppercase transition-colors disabled:opacity-50"
               style={{ background: "#EF4444", color: "#FFFFFF" }}
             >
               {excluindo ? "Excluindo…" : "Sim"}

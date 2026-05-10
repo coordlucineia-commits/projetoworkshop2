@@ -640,38 +640,37 @@ export function ProfessorTreinoNovoPage() {
 
                           {!!selValido && (
                             <div className="rounded-xl p-5 border border-[#2C2C2C]" style={{ background: "#0D0D0D" }}>
-                              <div className="flex flex-nowrap items-end gap-3 overflow-x-auto pb-0.5">
-                                <div className="min-w-[5.5rem] flex-1 shrink-0">
-                                  <MiniField
-                                    lab="Séries"
-                                    v={d.draftSeries}
-                                    setV={(nv) => patchDay(ix, { draftSeries: nv })}
-                                    inputMode="numeric"
-                                  />
+                              <div className="grid grid-cols-2 gap-3 w-full">
+                                <MiniField
+                                  lab="Séries"
+                                  v={d.draftSeries}
+                                  setV={(nv) => patchDay(ix, { draftSeries: nv })}
+                                  inputMode="numeric"
+                                />
+                                <MiniField
+                                  lab="Repetições"
+                                  v={d.draftRep}
+                                  setV={(nv) => patchDay(ix, { draftRep: nv })}
+                                />
+                                <MiniField
+                                  lab="Descanso (seg)"
+                                  v={d.draftDescanso}
+                                  setV={(nv) => patchDay(ix, { draftDescanso: nv })}
+                                  inputMode="numeric"
+                                />
+                                <div className="flex flex-col justify-end gap-2 min-h-0 min-w-0">
+                                  <span className="text-[11px] uppercase shrink-0" style={{ color: "#3A3A3A" }}>
+                                    &nbsp;
+                                  </span>
+                                  <SavePrimaryButton
+                                    preset="toolbar"
+                                    type="button"
+                                    onClick={() => adicionarExercicioAoDia(ix)}
+                                    className="w-full shrink-0"
+                                  >
+                                    Salvar
+                                  </SavePrimaryButton>
                                 </div>
-                                <div className="min-w-[5.5rem] flex-1 shrink-0">
-                                  <MiniField
-                                    lab="Repetições"
-                                    v={d.draftRep}
-                                    setV={(nv) => patchDay(ix, { draftRep: nv })}
-                                  />
-                                </div>
-                                <div className="min-w-[6.5rem] flex-1 shrink-0">
-                                  <MiniField
-                                    lab="Descanso (seg)"
-                                    v={d.draftDescanso}
-                                    setV={(nv) => patchDay(ix, { draftDescanso: nv })}
-                                    inputMode="numeric"
-                                  />
-                                </div>
-                                <SavePrimaryButton
-                                  preset="toolbar"
-                                  type="button"
-                                  onClick={() => adicionarExercicioAoDia(ix)}
-                                  className="shrink-0"
-                                >
-                                  Salvar
-                                </SavePrimaryButton>
                               </div>
                             </div>
                           )}

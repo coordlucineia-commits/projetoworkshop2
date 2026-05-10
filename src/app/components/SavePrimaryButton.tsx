@@ -14,7 +14,7 @@ const PRESET_CLASS: Record<SavePrimaryPreset, string> = {
     "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide shrink-0",
   /** Mesmo peso/visual do item ativo em `ProfessorLayout` (ex.: Treinos). */
   professorNav:
-    "w-full lg:w-fit inline-flex items-center gap-3 px-[27px] py-3 rounded-full text-sm transition-colors font-bold text-left justify-start",
+    "w-full lg:w-fit inline-flex items-center gap-3 px-[27px] py-3 rounded-full text-sm transition-colors font-bold justify-center",
 };
 
 export type SavePrimaryButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {

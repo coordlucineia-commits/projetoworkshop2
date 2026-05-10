@@ -35,7 +35,7 @@ export function ProfessorAvaliacoesPage() {
 
   return (
     <div className="px-4 md:px-10 py-8 pb-24 space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-black">Agenda avaliações</h1>
+      <h1 className="text-2xl font-black">Agenda de Avaliações</h1>
       <p className="text-sm" style={{ color: "#888" }}>
         Toque no aluno ou em &quot;Registrar medidas&quot; para abrir a ficha de avaliação corporal (peso,
         circunferências, etc.). Os dados ficam visíveis para o aluno em Meu perfil.
@@ -45,21 +45,21 @@ export function ProfessorAvaliacoesPage() {
         {rows.map((r) => (
           <li
             key={r.id}
-            className="rounded-2xl p-6 flex flex-wrap justify-between gap-4 border border-[#2A2A2A]"
+            className="rounded-2xl p-6 flex flex-col gap-4 md:flex-row md:flex-wrap md:justify-between md:items-center border border-[#2A2A2A]"
             style={{ background: "#151515" }}
           >
             <button
               type="button"
-              className="text-left min-w-0 flex-1"
+              className="text-left min-w-0 w-full md:flex-1"
               onClick={() => navigate(`/professor/avaliacoes/registrar/${r.id}`)}
               style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }}
             >
               <p className="font-bold text-lg">{r.alunos?.nome ?? "Aluno"}</p>
               <p className="text-sm mt-2" style={{ color: "#888" }}>
-                {new Date(r.inicio_at).toLocaleString("pt-BR")} · {r.status}
+                {new Date(r.inicio_at).toLocaleString("pt-BR")} — {r.status}
               </p>
             </button>
-            <div className="flex gap-2 items-center flex-wrap justify-end">
+            <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center w-full md:w-auto shrink-0">
               {!r.professor_id && (
                 <button
                   type="button"
@@ -67,7 +67,7 @@ export function ProfessorAvaliacoesPage() {
                     e.stopPropagation();
                     void attachSelf(r.id);
                   }}
-                  className="rounded-full px-5 py-2 text-xs uppercase font-black text-[#0A0A0A]"
+                  className="rounded-full px-5 py-2 text-xs uppercase font-black text-[#0A0A0A] w-full sm:w-auto"
                   style={{ background: "#AAA" }}
                 >
                   Eu atendo
@@ -76,7 +76,7 @@ export function ProfessorAvaliacoesPage() {
               <button
                 type="button"
                 onClick={() => navigate(`/professor/avaliacoes/registrar/${r.id}`)}
-                className="rounded-full px-7 py-2 text-xs uppercase font-black text-[#0A0A0A]"
+                className="rounded-full px-7 py-3 text-xs uppercase font-black text-[#0A0A0A] w-full sm:w-auto md:py-2"
                 style={{ background: "#00F9E4" }}
               >
                 Registrar medidas

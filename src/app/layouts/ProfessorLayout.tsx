@@ -8,11 +8,61 @@ import {
   CalendarRange,
   UserCircle,
   Utensils,
+  Dumbbell,
+  LayoutGrid,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { getSupabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { DevFooter } from "../components/DevFooter";
 import { SidebarBrand } from "../components/SidebarBrand";
 import { SidebarLogoutButton, SidebarUserRow } from "../components/SidebarProfileFooter";
+
+type TabItem = {
+  id: string;
+  path: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const SIDEBAR_TABS: TabItem[] = [
+  { id: "dash", path: "/professor/dashboard", label: "Início", icon: LayoutDashboard },
+  { id: "eval", path: "/professor/avaliacoes", label: "Avaliações", icon: ClipboardList },
+  { id: "plans", path: "/professor/treinos", label: "Treinos", icon: ListChecks },
+  { id: "sess", path: "/professor/sessoes", label: "Sessões", icon: CalendarRange },
+  { id: "perfil", path: "/professor/perfil", label: "Meu perfil", icon: UserCircle },
+  { id: "rec", path: "/professor/receitas", label: "Receitas", icon: Utensils },
+  { id: "ex", path: "/professor/exercicios", label: "Exercícios", icon: Dumbbell },
+];
+
+const MOBILE_DOCK_TABS: TabItem[] = [
+  { id: "dash", path: "/professor/dashboard", label: "Início", icon: LayoutDashboard },
+  { id: "eval", path: "/professor/avaliacoes", label: "Avaliações", icon: ClipboardList },
+  { id: "plans", path: "/professor/treinos", label: "Treinos", icon: ListChecks },
+  { id: "sess", path: "/professor/sessoes", label: "Sessões", icon: CalendarRange },
+  { id: "perfil", path: "/professor/perfil", label: "Meu perfil", icon: UserCircle },
+  { id: "menu", path: "/professor/menu", label: "Mais", icon: LayoutGrid },
+];
+
+function sidebarActiveId(pathname: string): string {
+  if (pathname.startsWith("/professor/menu")) return "";
+  if (pathname.startsWith("/professor/avaliacoes")) return "eval";
+  if (pathname.startsWith("/professor/treinos")) return "plans";
+  if (pathname.startsWith("/professor/receitas")) return "rec";
+  if (pathname.startsWith("/professor/exercicios")) return "ex";
+  if (pathname.startsWith("/professor/sessoes")) return "sess";
+  if (pathname.startsWith("/professor/perfil")) return "perfil";
+  return "dash";
+}
+
+function dockActiveId(pathname: string): string {
+  if (pathname.startsWith("/professor/menu")) return "menu";
+  if (pathname.startsWith("/professor/receitas") || pathname.startsWith("/professor/exercicios")) return "menu";
+  if (pathname.startsWith("/professor/avaliacoes")) return "eval";
+  if (pathname.startsWith("/professor/treinos")) return "plans";
+  if (pathname.startsWith("/professor/sessoes")) return "sess";
+  if (pathname.startsWith("/professor/perfil")) return "perfil";
+  return "dash";
+}
 
 export function ProfessorLayout() {
   const navigate = useNavigate();
@@ -52,24 +102,8 @@ export function ProfessorLayout() {
   }
 
   const p = location.pathname;
-  const act = (): string => {
-    if (p.startsWith("/professor/avaliacoes")) return "eval";
-    if (p.startsWith("/professor/treinos")) return "plans";
-    if (p.startsWith("/professor/receitas")) return "rec";
-    if (p.startsWith("/professor/sessoes")) return "sess";
-    if (p.startsWith("/professor/perfil")) return "perfil";
-    return "dash";
-  };
-  const a = act();
-
-  const tabs = [
-    { id: "dash", path: "/professor/dashboard", label: "Início", icon: LayoutDashboard },
-    { id: "eval", path: "/professor/avaliacoes", label: "Avaliações", icon: ClipboardList },
-    { id: "perfil", path: "/professor/perfil", label: "Meu perfil", icon: UserCircle },
-    { id: "rec", path: "/professor/receitas", label: "Receitas", icon: Utensils },
-    { id: "sess", path: "/professor/sessoes", label: "Sessões", icon: CalendarRange },
-    { id: "plans", path: "/professor/treinos", label: "Treinos", icon: ListChecks },
-  ];
+  const sidebarSel = sidebarActiveId(p);
+  const dockSel = dockActiveId(p);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "#0A0A0A", color: "#F5F5F5", maxWidth: "100%", width: "100%" }}>
@@ -80,8 +114,8 @@ export function ProfessorLayout() {
         <SidebarBrand onNavigateHome={() => navigate("/professor/dashboard")} />
         <SidebarUserRow displayName={sidebarNome || "Professor"} roleLabelMono="PROFESSOR" />
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto min-h-0">
-          {tabs.map((it) => {
-            const sel = a === it.id;
+          {SIDEBAR_TABS.map((it) => {
+            const sel = sidebarSel === it.id;
             return (
               <button
                 key={it.id}
@@ -104,7 +138,7 @@ export function ProfessorLayout() {
         <DevFooter className="mt-1 px-3 pb-1" />
       </aside>
 
-      <main className="flex-1 px-4 md:px-10 pb-[66px] md:pb-8 flex flex-col">
+      <main className="flex-1 px-0 md:px-10 pb-[66px] md:pb-8 flex flex-col">
         <Outlet context={{ professorId }} />
         <DevFooter className="py-4 md:hidden" />
       </main>
@@ -113,19 +147,21 @@ export function ProfessorLayout() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#222222] pb-[env(safe-area-inset-bottom)]"
         style={{ background: "#111111" }}
       >
-        <div className="grid grid-cols-6 h-[58px] items-center px-1">
-          {tabs.map((it) => {
-            const sel = a === it.id;
+        <div className="grid grid-cols-6 h-[58px] items-center px-0.5">
+          {MOBILE_DOCK_TABS.map((it) => {
+            const sel = dockSel === it.id;
             return (
               <button
                 key={it.id}
                 type="button"
                 onClick={() => navigate(it.path)}
-                className="flex flex-col items-center justify-center gap-0.5 py-2"
+                className="flex flex-col items-center justify-center gap-0.5 py-1 min-w-0 h-full rounded-lg transition-colors"
                 style={{ color: sel ? "#00F9E4" : "#6B6B6B" }}
               >
-                <it.icon size={18} strokeWidth={sel ? 2.4 : 2} />
-                <span className="text-[9px] uppercase">{it.label}</span>
+                <it.icon size={17} strokeWidth={sel ? 2.4 : 2} className="shrink-0" />
+                <span className="text-[8px] font-semibold text-center leading-tight max-w-[100%] px-0.5 line-clamp-2">
+                  {it.label}
+                </span>
               </button>
             );
           })}

@@ -488,7 +488,7 @@ export function AlunosPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       onClick={() => verPerfil(aluno)}
-                      className="p-5 rounded-2xl cursor-pointer transition-all"
+                      className="p-4 md:p-5 rounded-2xl cursor-pointer transition-all"
                       style={{
                         background: "#1A1A1A",
                         border: "1px solid #303030",
@@ -502,22 +502,17 @@ export function AlunosPage() {
                           "#303030";
                       }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          {/* Avatar */}
+                      <div className="flex items-center justify-between gap-2 md:gap-4">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                           <AlunoAvatar nome={aluno.nome} src={aluno.avatar} size={48} />
 
-                          {/* Info */}
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3
-                                className="font-bold text-base"
-                                style={{ color: "#F2F2F2" }}
-                              >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <h3 className="font-bold text-sm md:text-base truncate" style={{ color: "#F2F2F2" }}>
                                 {aluno.nome}
                               </h3>
                               <span
-                                className="px-2 py-0.5 rounded text-xs font-mono"
+                                className="px-2 py-0.5 rounded text-[10px] md:text-xs font-mono shrink-0"
                                 style={{
                                   background: "rgba(0, 249, 228, 0.1)",
                                   color: "#00F9E4",
@@ -527,32 +522,28 @@ export function AlunosPage() {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 text-xs">
+                            <div className="flex flex-wrap items-center gap-1.5 md:gap-2 text-[10px] md:text-xs">
                               <span
                                 className="font-mono"
                                 style={{
-                                  color: getStatusColor(aluno.statusFinanceiro)
-                                    .text,
+                                  color: getStatusColor(aluno.statusFinanceiro).text,
                                 }}
                               >
                                 {aluno.statusFinanceiro}
                               </span>
                               <span style={{ color: "#606060" }}>•</span>
-                              <span style={{ color: "#606060" }}>
-                                Cadastro: {aluno.dataCadastro}
-                              </span>
+                              <span style={{ color: "#606060" }}>Cadastro: {aluno.dataCadastro}</span>
                             </div>
+                            <span
+                              className="mt-2 block text-[10px] font-mono uppercase tracking-widest truncate"
+                              style={{ color: "#606060" }}
+                            >
+                              {aluno.plano}
+                            </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                          <span
-                            className="text-xs font-mono uppercase tracking-widest"
-                            style={{ color: "#606060" }}
-                          >
-                            {aluno.plano}
-                          </span>
-
+                        <div className="flex items-center gap-2 md:gap-4 shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

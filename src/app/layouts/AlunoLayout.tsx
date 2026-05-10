@@ -152,7 +152,7 @@ export function AlunoLayout() {
                 }}
               >
                 <it.icon size={18} strokeWidth={sel ? 2.4 : 2} />
-                <span className="text-[9px] uppercase tracking-wider font-semibold truncate max-w-[72px] text-center leading-tight">
+                <span className="text-[10px] font-semibold truncate max-w-[76px] text-center leading-tight normal-case tracking-tight px-px">
                   {navLabel}
                 </span>
               </button>

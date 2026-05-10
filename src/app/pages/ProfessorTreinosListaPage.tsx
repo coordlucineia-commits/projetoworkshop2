@@ -91,7 +91,7 @@ export function ProfessorTreinosListaPage() {
           {cadastroLista.map((a) => (
             <li
               key={a.id}
-              className="flex flex-wrap justify-between gap-4 items-center rounded-2xl px-6 py-4 border border-[#2A2A2A]"
+              className="flex flex-col gap-3 items-stretch md:flex-row md:flex-wrap md:justify-between md:items-center rounded-2xl px-6 py-4 border border-[#2A2A2A]"
               style={{ background: "#151515" }}
             >
               <span className="font-bold min-w-0" style={{ color: "#EEE" }}>
@@ -100,7 +100,7 @@ export function ProfessorTreinosListaPage() {
               <button
                 type="button"
                 onClick={() => navigate(`/professor/treinos/novo/${a.id}`)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-full text-sm transition-colors text-left shrink-0"
+                className="flex items-center justify-center gap-3 px-4 py-2.5 rounded-full text-sm transition-colors w-full md:w-fit shrink-0"
                 style={{
                   background: "#00F9E4",
                   color: "#0A0A0A",

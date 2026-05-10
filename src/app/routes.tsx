@@ -30,6 +30,7 @@ import { ProfessorTreinoNovoPage } from "./pages/ProfessorTreinoNovoPage";
 import { ProfessorTreinoHistoricoAlunoPage } from "./pages/ProfessorTreinoHistoricoAlunoPage";
 import { ProfessorSessoesPage } from "./pages/ProfessorSessoesPage";
 import { ProfessorPerfilPage } from "./pages/ProfessorPerfilPage";
+import { ProfessorMenuMorePage } from "./pages/ProfessorMenuMorePage";
 
 // Admin pages (flat — each has useRequireAdmin internally)
 import { Dashboard } from "./components/Dashboard";
@@ -98,6 +99,8 @@ export const router = createBrowserRouter([
       { path: "receitas", Component: AlunoReceitasPage },
       { path: "sessoes", Component: ProfessorSessoesPage },
       { path: "perfil", Component: ProfessorPerfilPage },
+      { path: "exercicios", Component: AlunoExerciciosPage },
+      { path: "menu", Component: ProfessorMenuMorePage },
     ],
   },
 

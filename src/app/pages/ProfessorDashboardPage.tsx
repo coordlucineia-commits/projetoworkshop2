@@ -54,10 +54,10 @@ export function ProfessorDashboardPage() {
         <Stat label="Sessões com alunos" value={k.sess} />
         <Stat label="Minhas turmas em grade" value={k.aulas} />
       </div>
-      <nav className="flex flex-wrap gap-4 pt-10">
-        <NavCard to="/professor/avaliacoes" title="Agenda avaliações" />
-        <NavCard to="/professor/treinos" title="Treinos" />
-        <NavCard to="/professor/sessoes" title="Sessões" />
+      <nav className="flex flex-col md:flex-row md:flex-wrap gap-4 pt-10">
+        <NavCard to="/professor/avaliacoes" title="Agenda de Avaliações" />
+        <NavCard to="/professor/treinos" title="Cadastrar Treinos" />
+        <NavCard to="/professor/sessoes" title="Sessões Agendadas" />
       </nav>
     </div>
   );

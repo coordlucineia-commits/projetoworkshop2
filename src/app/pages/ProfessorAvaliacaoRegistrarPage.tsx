@@ -359,7 +359,7 @@ export function ProfessorAvaliacaoRegistrarPage() {
 
   if (loading) {
     return (
-      <div className="px-4 md:px-10 py-16 font-mono text-xs uppercase tracking-widest" style={{ color: "#606060" }}>
+      <div className="px-0 md:px-10 py-16 font-mono text-xs uppercase tracking-widest" style={{ color: "#606060" }}>
         Carregando…
       </div>
     );
@@ -397,7 +397,7 @@ export function ProfessorAvaliacaoRegistrarPage() {
   }
 
   return (
-    <div className="px-4 md:px-10 py-8 pb-24 max-w-3xl">
+    <div className="px-0 md:px-10 py-8 pb-24 max-w-3xl space-y-6">
       <button
         type="button"
         onClick={() => navigate("/professor/avaliacoes")}

@@ -1,24 +1,25 @@
-import { useMemo } from "react";
-import { useNavigate, useOutletContext } from "react-router";
+import { useNavigate } from "react-router";
 import { motion } from "motion/react";
-import { ArrowLeft, LogOut } from "lucide-react";
-import { getAlunoSidebarNavItems } from "../../lib/alunoNavConfig";
+import { ArrowLeft, LogOut, Utensils, Dumbbell } from "lucide-react";
 import { getSupabase } from "../../lib/supabaseClient";
 
-type Ctx = { alunoId: string; checkinRegistrado: boolean; alunoSexo: string | null };
-
-/** Itens que já aparecem na dock mobile — não repetir nesta página. */
-const DOCK_MORE_EXCLUDE_IDS = new Set(["dash", "mine", "aval", "perfil"]);
-
-export function AlunoMenuMorePage() {
+export function ProfessorMenuMorePage() {
   const navigate = useNavigate();
-  const { alunoSexo } = useOutletContext<Ctx>();
 
-  const items = useMemo(
-    () =>
-      getAlunoSidebarNavItems(alunoSexo).filter((it) => !DOCK_MORE_EXCLUDE_IDS.has(it.id)),
-    [alunoSexo],
-  );
+  const items = [
+    {
+      label: "Receitas",
+      path: "/professor/receitas",
+      hint: "Biblioteca nutricional",
+      icon: Utensils,
+    },
+    {
+      label: "Exercícios",
+      path: "/professor/exercicios",
+      hint: "Biblioteca de exercícios",
+      icon: Dumbbell,
+    },
+  ];
 
   const onSair = () => void getSupabase().auth.signOut().then(() => navigate("/login"));
 
@@ -27,7 +28,7 @@ export function AlunoMenuMorePage() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 mb-8 text-sm aluno-no-print"
+        className="flex items-center gap-2 mb-8 text-sm"
         style={{ color: "#9A9A9A" }}
       >
         <ArrowLeft size={16} className="shrink-0 text-primary" /> Voltar
@@ -42,7 +43,7 @@ export function AlunoMenuMorePage() {
         Mais
       </motion.h1>
       <p className="text-sm mb-8" style={{ color: "#6B6B6B" }}>
-        Outros atalhos (o que já está na barra inferior não aparece aqui).
+        Atalhos extras da área do professor — igual à ideia do menu Mais do aluno.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0">
@@ -100,9 +101,6 @@ export function AlunoMenuMorePage() {
           </div>
           <span className="font-bold">Sair</span>
         </div>
-        <p className="text-xs mt-2 hidden md:block pl-[52px]" style={{ color: "#6B6B6B" }}>
-          Encerrar sessão neste dispositivo
-        </p>
       </motion.button>
     </div>
   );

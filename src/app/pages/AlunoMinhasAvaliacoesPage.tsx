@@ -290,7 +290,7 @@ export function AlunoMinhasAvaliacoesPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl w-full px-4 md:px-10 box-border mt-6 pb-24">
+      <div className="mx-auto max-w-3xl w-full px-0 md:px-10 box-border mt-6 pb-24">
         <p className="text-sm font-mono uppercase" style={{ color: "#6B6B6B" }}>
           Carregando…
         </p>
@@ -301,7 +301,7 @@ export function AlunoMinhasAvaliacoesPage() {
   const historicoAgendas = agendas.filter((g) => g.status !== "agendado");
 
   return (
-    <div className="mx-auto max-w-3xl w-full px-4 md:px-10 box-border mt-6 pb-24">
+    <div className="mx-auto max-w-3xl w-full px-0 md:px-10 box-border mt-6 pb-24">
       <div className="mb-6">
         <h1 className="font-black text-2xl md:text-3xl tracking-tight" style={{ color: "#F2F2F2" }}>
           Minhas avaliações

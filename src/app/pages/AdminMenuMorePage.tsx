@@ -4,6 +4,7 @@ import {
   ClipboardList,
   ArrowLeft,
   Users2,
+  Users,
   Utensils,
   Dumbbell,
   Columns2,
@@ -20,8 +21,23 @@ import { staffHasPerm, useStaffSession } from "../context/StaffSessionContext";
 import type { StaffPermKey } from "../../lib/staffPermKeys";
 import { getSupabase } from "../../lib/supabaseClient";
 
-const links: { label: string; path: string; icon: LucideIcon; hint: string; perm: StaffPermKey }[] = [
+const links: {
+  label: string;
+  path: string;
+  icon: LucideIcon;
+  hint: string;
+  perm: StaffPermKey;
+  superAdminOnly?: boolean;
+}[] = [
   { label: "Professores", path: "/professores", icon: Users2, hint: "Equipe técnica", perm: "professores" },
+  {
+    label: "Colaboradores",
+    path: "/colaboradores",
+    icon: Users,
+    hint: "Gestão de contas da equipe",
+    perm: "dashboard",
+    superAdminOnly: true,
+  },
   { label: "Receitas", path: "/receitas", icon: Utensils, hint: "Biblioteca nutricional", perm: "receitas" },
   { label: "Exercícios", path: "/exercicios", icon: Dumbbell, hint: "Biblioteca de treino", perm: "exercicios" },
   { label: "Aulas em grade", path: "/aulas", icon: Columns2, hint: "Salas A e B", perm: "aulas" },
@@ -37,9 +53,10 @@ export function AdminMenuMorePage() {
 
   const visibleLinks = useMemo(
     () =>
-      [...links.filter((l) => staffHasPerm(role, permissoes, l.perm))].sort((a, b) =>
-        a.label.localeCompare(b.label, "pt-BR"),
-      ),
+      links
+        .filter((l) => staffHasPerm(role, permissoes, l.perm))
+        .filter((l) => !l.superAdminOnly || role === "super_admin")
+        .sort((a, b) => a.label.localeCompare(b.label, "pt-BR")),
     [role, permissoes],
   );
 

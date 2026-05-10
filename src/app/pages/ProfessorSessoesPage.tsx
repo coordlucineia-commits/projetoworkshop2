@@ -54,10 +54,10 @@ export function ProfessorSessoesPage() {
   }
 
   return (
-    <div className="px-4 md:px-10 py-8 pb-24 space-y-8 max-w-3xl">
-      <h1 className="text-2xl font-black">Minhas sessões com alunos</h1>
+    <div className="px-0 md:px-10 py-8 pb-24 space-y-8 max-w-3xl">
+      <h1 className="text-2xl font-black px-4 md:px-0">Sessões Agendadas</h1>
 
-      <ul className="space-y-5">
+      <ul className="space-y-5 px-4 md:px-0">
         {rows.map((r) => (
           <li key={r.id} className="rounded-3xl px-8 py-7 border flex flex-wrap justify-between gap-6 items-start border-[#2A2A2A]" style={{ background: "#151515", color: "#EEE" }}>
             <div className="min-w-0">
